@@ -1,0 +1,54 @@
+
+# InsForge & AI agent skills
+.insforge
+.agent
+.agents
+.augment
+.claude
+.cline
+.github/copilot*
+.kilocode
+.qoder
+.qwen
+.roo
+.trae
+.windsurf
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# Flutter build outputs
+build/
+**/build/
+
+# IDEs / local settings
+.idea/
+.vscode/
+*.iml
+.metadata/
+.metadata
+
+# Android / Gradle
+android/.gradle/
+android/local.properties
+android/app/build/
+
+# iOS
+ios/Pods/
+
+# macOS
+macos/Pods/
+
+# Linux
+linux/packaging/
+
+# Web / generated
+.flutter-plugins-dependencies/
+
+# Environment / secrets
+.env
+*.env
+

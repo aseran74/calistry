@@ -1,0 +1,9 @@
+{
+  "name": "Calistry Admin",
+  "short_name": "Admin",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0d0e11",
+  "theme_color": "#0d0e11",
+  "description": "Panel admin web para gestionar usuarios, ejercicios, rutinas y vídeos de Calistry."
+}

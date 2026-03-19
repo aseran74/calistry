@@ -1,0 +1,21 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:calistenia_app/core/router/app_router.dart';
+import 'package:calistenia_app/core/theme/theme.dart';
+
+class CalisteniaApp extends ConsumerWidget {
+  const CalisteniaApp({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(appRouterProvider);
+    return MaterialApp.router(
+      title: 'Calistry',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.dark,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.dark,
+      routerConfig: router,
+    );
+  }
+}
