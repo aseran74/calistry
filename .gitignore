@@ -52,3 +52,6 @@ linux/packaging/
 .env
 *.env
 
+# Logs de herramientas / crash
+*.log
+
