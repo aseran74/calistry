@@ -5,11 +5,13 @@ import 'package:calistenia_app/features/routines/domain/models/routine.dart';
 import 'package:calistenia_app/features/routines/domain/models/routine_exercise_item.dart';
 
 /// Tab: 'mine' | 'assigned' | 'explore'
-/// Por defecto "assigned" (alumnos); los profesores pasan a "mine" en [RoutinesScreen].
-final routinesTabProvider = StateProvider<String>((ref) => 'assigned');
+/// Por defecto "mine": es lo que más se usa y evita confusión con "Asignadas" vacías.
+final routinesTabProvider = StateProvider<String>((ref) => 'mine');
 
 final routinesListProvider =
     FutureProvider.family<List<Routine>, String>((ref, tab) async {
+  // Evita que el provider se deseche al cambiar de rama del shell (IndexedStack/offstage).
+  ref.keepAlive();
   final client = ref.watch(apiClientProvider);
   // Depender explícitamente del id para re-ejecutar al hidratar sesión.
   final myUserId = ref.watch(
@@ -47,6 +49,7 @@ final routinesListProvider =
 
 final assignedRoutinesProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  ref.keepAlive();
   final uid = ref.watch(
     authControllerProvider.select((a) => a.session?.user.id),
   );

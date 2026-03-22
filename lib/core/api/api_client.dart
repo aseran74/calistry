@@ -401,6 +401,33 @@ class ApiClient {
   }
 
   /// True si la fila de `routines` pertenece al usuario (varias claves según API/Insforge).
+  /// IDs en filas de `routine_assignments` (snake_case / camelCase / embed).
+  static String? assignmentRoutineId(Map<String, dynamic> a) {
+    final v = a['routine_id'] ?? a['routineId'];
+    if (v == null) return null;
+    if (v is Map) {
+      final id = v['id'] ?? v['_id'];
+      if (id == null) return null;
+      final s = id.toString();
+      return s.isEmpty ? null : s;
+    }
+    final s = v.toString();
+    return s.isEmpty ? null : s;
+  }
+
+  static String? assignmentTeacherUserId(Map<String, dynamic> a) {
+    final v = a['teacher_user_id'] ?? a['teacherUserId'];
+    if (v == null) return null;
+    if (v is Map) {
+      final id = v['id'] ?? v['_id'];
+      if (id == null) return null;
+      final s = id.toString();
+      return s.isEmpty ? null : s;
+    }
+    final s = v.toString();
+    return s.isEmpty ? null : s;
+  }
+
   static bool routineRowBelongsToUser(Map<String, dynamic> row, String userId) {
     if (userId.isEmpty) return false;
     for (final key in const [
@@ -1494,13 +1521,13 @@ class ApiClient {
     if (assignments.isEmpty) return [];
 
     final routineIds = assignments
-        .map((assignment) => assignment['routine_id']?.toString())
+        .map(assignmentRoutineId)
         .whereType<String>()
         .where((id) => id.isNotEmpty)
         .toSet()
         .toList();
     final teacherIds = assignments
-        .map((assignment) => assignment['teacher_user_id']?.toString())
+        .map(assignmentTeacherUserId)
         .whereType<String>()
         .where((id) => id.isNotEmpty)
         .toSet()
@@ -1517,20 +1544,38 @@ class ApiClient {
           );
     final teachers = teacherIds.isEmpty ? <Map<String, dynamic>>[] : await getUsersByIds(teacherIds);
 
-    final routineMap = {
+    final routineMap = <String, Map<String, dynamic>>{
       for (final routine in routines) routine['id'].toString(): routine,
     };
+
+    // Si el `in.(…)` devolvió vacío por RLS/sintaxis pero `eq.id` sí permite leer la fila.
+    final missingRoutineIds =
+        routineIds.where((id) => routineMap[id] == null).toList();
+    if (missingRoutineIds.isNotEmpty) {
+      await Future.wait(
+        missingRoutineIds.map((id) async {
+          try {
+            final row = await getRoutineById(id);
+            if (row != null) routineMap[id] = row;
+          } catch (_) {}
+        }),
+      );
+    }
+
     final teacherMap = {
       for (final teacher in teachers) teacher['id'].toString(): teacher,
     };
 
     return assignments
         .map(
-          (assignment) => {
-            ...assignment,
-            'routine': routineMap[assignment['routine_id']?.toString()],
-            'teacher_user':
-                teacherMap[assignment['teacher_user_id']?.toString()],
+          (assignment) {
+            final rid = assignmentRoutineId(assignment);
+            final tid = assignmentTeacherUserId(assignment);
+            return {
+              ...assignment,
+              'routine': rid != null ? routineMap[rid] : null,
+              'teacher_user': tid != null ? teacherMap[tid] : null,
+            };
           },
         )
         .toList();
