@@ -194,16 +194,22 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _teacher?['specialty']?.toString().isNotEmpty == true
-                            ? _teacher!['specialty'].toString()
-                            : 'Especialidad pendiente',
+                        () {
+                          final s = _teacher?['specialty']?.toString();
+                          return (s != null && s.isNotEmpty)
+                              ? s
+                              : 'Especialidad pendiente';
+                        }(),
                         style: theme.textTheme.titleMedium,
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        _teacher?['bio']?.toString().isNotEmpty == true
-                            ? _teacher!['bio'].toString()
-                            : 'Este profesor todavía no ha añadido bio.',
+                        () {
+                          final b = _teacher?['bio']?.toString();
+                          return (b != null && b.isNotEmpty)
+                              ? b
+                              : 'Este profesor todavía no ha añadido bio.';
+                        }(),
                       ),
                       const SizedBox(height: 16),
                       _SocialLinksSection(

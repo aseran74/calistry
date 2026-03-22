@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:calistenia_app/core/api/api_providers.dart';
 import 'package:calistenia_app/features/auth/presentation/providers/auth_controller.dart';
+import 'package:calistenia_app/features/planning/presentation/widgets/routine_schedule_picker_section.dart';
 
 class TeacherGroupDetailScreen extends ConsumerStatefulWidget {
   const TeacherGroupDetailScreen({super.key, required this.groupId});
@@ -156,6 +157,8 @@ class _TeacherGroupDetailScreenState
       String routineId = routines.first['id'].toString();
       final notesController = TextEditingController();
       var submitting = false;
+      var scheduleDays = <int>{};
+      TimeOfDay? scheduleTime = const TimeOfDay(hour: 10, minute: 0);
 
       try {
         await showDialog<void>(
@@ -166,12 +169,16 @@ class _TeacherGroupDetailScreenState
                 if (submitting) return;
                 setLocal(() => submitting = true);
                 try {
+                  final daysList = scheduleDays.toList()..sort();
                   await api.assignRoutineToGroup(
                     routineId: routineId,
                     groupId: widget.groupId,
                     notes: notesController.text.trim().isEmpty
                         ? null
                         : notesController.text.trim(),
+                    scheduleDays: daysList,
+                    scheduleHour: scheduleTime?.hour,
+                    scheduleMinute: scheduleTime?.minute ?? 0,
                   );
                   if (!ctx.mounted) return;
                   Navigator.of(ctx).pop();
@@ -192,31 +199,50 @@ class _TeacherGroupDetailScreenState
                 title: const Text('Enviar rutina al grupo'),
                 content: SizedBox(
                   width: 520,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      DropdownButtonFormField<String>(
-                        value: routineId,
-                        decoration:
-                            const InputDecoration(labelText: 'Rutina'),
-                        items: routines
-                            .map((r) => DropdownMenuItem(
-                                  value: r['id'].toString(),
-                                  child: Text(r['name']?.toString() ?? 'Rutina'),
-                                ))
-                            .toList(),
-                        onChanged: (v) => setLocal(() => routineId = v ?? routineId),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: notesController,
-                        minLines: 2,
-                        maxLines: 4,
-                        decoration: const InputDecoration(
-                          labelText: 'Notas (opcional)',
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          value: routineId,
+                          decoration:
+                              const InputDecoration(labelText: 'Rutina'),
+                          items: routines
+                              .map((r) => DropdownMenuItem(
+                                    value: r['id'].toString(),
+                                    child: Text(
+                                        r['name']?.toString() ?? 'Rutina'),
+                                  ))
+                              .toList(),
+                          onChanged: (v) =>
+                              setLocal(() => routineId = v ?? routineId),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        RoutineSchedulePickerSection(
+                          daysTitle: '¿Qué días debe hacerla?',
+                          daysHint:
+                              'Opcional. Misma pauta para todos los alumnos del grupo.',
+                          timeSubtitle:
+                              'Cada alumno lo verá en inicio y en Rutinas → Asignadas.',
+                          selectedDays: scheduleDays,
+                          onDaysChanged: (d) =>
+                              setLocal(() => scheduleDays = d),
+                          selectedTime: scheduleTime,
+                          onTimeChanged: (t) =>
+                              setLocal(() => scheduleTime = t),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: notesController,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration: const InputDecoration(
+                            labelText: 'Notas (opcional)',
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 actions: [

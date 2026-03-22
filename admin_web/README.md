@@ -2,6 +2,11 @@
 
 Panel admin Flutter Web para gestionar usuarios, ejercicios, rutinas y vídeos sobre Insforge.
 
+> **Importante:** la raíz del repositorio es **`Caliosteniaflutter`** (la carpeta padre), no `admin_web`.  
+> Abre el proyecto en `C:\Proyectos\Caliosteniaflutter` y, para este panel, entra a `admin_web` solo al ejecutar comandos.
+
+> **Flujo recomendado (admin + profe + alumno):** desde la raíz del repo ejecuta `flutter run -d chrome` sobre la **app principal** (`calistenia_app`): un solo login y el router te lleva a `/admin`, `/teacher` o al shell de alumno según el rol. Este subproyecto `admin_web` es una variante aparte; no es obligatoria para ese flujo. Ver **[README en la raíz](../README.md)** (sección «Web desde la raíz: un login, tres dashboards»).
+
 ## Requisitos
 
 - Flutter instalado
@@ -9,6 +14,8 @@ Panel admin Flutter Web para gestionar usuarios, ejercicios, rutinas y vídeos s
 - Un usuario con `role = 'admin'` o `role = 'moderator'` en la tabla `users`
 
 ## Ejecutar en local
+
+Desde la raíz del repo (`C:\Proyectos\Caliosteniaflutter`):
 
 ```bash
 cd admin_web
@@ -23,6 +30,8 @@ Si quieres pasar una `anon key`, añade también:
 ```
 
 ## Build web
+
+Desde la raíz del repo (`C:\Proyectos\Caliosteniaflutter`):
 
 ```bash
 cd admin_web

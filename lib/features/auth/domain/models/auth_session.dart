@@ -15,8 +15,9 @@ class AuthUser {
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
     return AuthUser(
-      id: json['id'] as String? ?? '',
-      email: json['email'] as String? ?? '',
+      // Insforge / OAuth pueden devolver id como String o no-string.
+      id: json['id']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
       role: json['role'] as String? ?? 'authenticated',
       providers: (json['providers'] as List<dynamic>?)
               ?.map((e) => e.toString())

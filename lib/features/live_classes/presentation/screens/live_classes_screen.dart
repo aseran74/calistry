@@ -217,11 +217,11 @@ class _LiveClassesScreenState extends ConsumerState<LiveClassesScreen> {
                           items: studentIds
                               .map((id) {
                                 final u = studentsById[id];
+                                final uname = u?['username']?.toString();
                                 final label =
-                                    u?['username']?.toString().isNotEmpty ==
-                                            true
-                                        ? u!['username'].toString()
-                                        : u?['email']?.toString() ?? id;
+                                    (uname != null && uname.isNotEmpty)
+                                        ? uname
+                                        : (u?['email']?.toString() ?? id);
                                 return DropdownMenuItem(
                                   value: id,
                                   child: Text(label),

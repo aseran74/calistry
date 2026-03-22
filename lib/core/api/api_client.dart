@@ -400,6 +400,88 @@ class ApiClient {
     return _databaseGet('routines', queryParams: params);
   }
 
+  /// True si la fila de `routines` pertenece al usuario (varias claves según API/Insforge).
+  static bool routineRowBelongsToUser(Map<String, dynamic> row, String userId) {
+    if (userId.isEmpty) return false;
+    for (final key in const [
+      'user_id',
+      'userId',
+      'owner_user_id',
+      'ownerUserId',
+      'profile_id',
+      'profileId',
+      'author_id',
+      'authorId',
+      'created_by',
+      'createdBy',
+    ]) {
+      final v = row[key];
+      if (v != null && v.toString() == userId) return true;
+    }
+    return false;
+  }
+
+  /// Rutinas creadas por el usuario actual. Combina filtro PostgREST + filtro local
+  /// por si `user_id=eq.x` no devuelve filas aunque RLS sí permita leerlas.
+  Future<List<Map<String, dynamic>>> getMyRoutines({int limit = 100}) async {
+    final userId = _userId;
+    if (userId == null || userId.isEmpty) return [];
+
+    final byId = <String, Map<String, dynamic>>{};
+    void take(List<Map<String, dynamic>> rows) {
+      for (final r in rows) {
+        final id = r['id']?.toString();
+        if (id != null && id.isNotEmpty) byId[id] = r;
+      }
+    }
+
+    // 1) Filtro PostgREST clásico
+    final byParam = await getRoutines(userId: userId, limit: limit);
+    take(byParam);
+
+    // 2) OR por varias columnas de propietario (si existen en el esquema)
+    try {
+      final orRows = await _databaseGet(
+        'routines',
+        queryParams: {
+          'limit': limit.toString(),
+          'offset': '0',
+          'order': 'created_at.desc',
+          'or': '(user_id.eq.$userId,owner_user_id.eq.$userId,profile_id.eq.$userId,author_id.eq.$userId)',
+        },
+      );
+      take(orRows.where((row) => routineRowBelongsToUser(row, userId)).toList());
+    } catch (_) {
+      // Columnas distintas o sintaxis no soportada: ignorar
+    }
+
+    // 3) Lista amplia con JWT + filtro local (RLS suele limitar filas visibles)
+    try {
+      final wide = await _databaseGet(
+        'routines',
+        queryParams: {
+          'limit': limit.toString(),
+          'offset': '0',
+          'order': 'created_at.desc',
+        },
+      );
+      take(wide.where((row) => routineRowBelongsToUser(row, userId)).toList());
+    } catch (_) {
+      // Sin permiso para listar sin filtro
+    }
+
+    final out = byId.values.toList();
+    out.sort((a, b) {
+      final ta = a['created_at']?.toString() ?? '';
+      final tb = b['created_at']?.toString() ?? '';
+      return tb.compareTo(ta);
+    });
+    if (out.length > limit) {
+      return out.sublist(0, limit);
+    }
+    return out;
+  }
+
   Future<List<Map<String, dynamic>>> getPlanningSlots() async {
     final userId = _requireUserId();
     return _databaseGet(
@@ -1006,6 +1088,9 @@ class ApiClient {
     required String routineId,
     required String groupId,
     String? notes,
+    List<int>? scheduleDays,
+    int? scheduleHour,
+    int scheduleMinute = 0,
   }) async {
     final userId = _requireUserId();
     final members = await getTeacherGroupMembers(groupId);
@@ -1017,6 +1102,12 @@ class ApiClient {
         .toList();
     if (studentIds.isEmpty) return;
 
+    final schedule = _routineAssignmentSchedulePayload(
+      scheduleDays: scheduleDays,
+      scheduleHour: scheduleHour,
+      scheduleMinute: scheduleMinute,
+    );
+
     final rows = studentIds
         .map((studentId) => {
               'routine_id': routineId,
@@ -1024,6 +1115,7 @@ class ApiClient {
               'student_user_id': studentId,
               'notes': notes,
               'status': 'active',
+              ...schedule,
             })
         .toList();
 
@@ -1341,13 +1433,36 @@ class ApiClient {
     return _databaseGet('routine_assignments', queryParams: params);
   }
 
+  Map<String, dynamic> _routineAssignmentSchedulePayload({
+    List<int>? scheduleDays,
+    int? scheduleHour,
+    int scheduleMinute = 0,
+  }) {
+    final days = scheduleDays ?? [];
+    final sorted = days.where((d) => d >= 1 && d <= 7).toSet().toList()..sort();
+    final mm = scheduleMinute.clamp(0, 59);
+    return {
+      'schedule_days': sorted.isEmpty ? null : sorted,
+      'schedule_hour': scheduleHour,
+      'schedule_minute': scheduleHour != null ? mm : 0,
+    };
+  }
+
   Future<Map<String, dynamic>?> assignRoutineToStudent({
     required String routineId,
     required String studentUserId,
     String? notes,
     DateTime? startDate,
+    List<int>? scheduleDays,
+    int? scheduleHour,
+    int scheduleMinute = 0,
   }) async {
     final teacherUserId = _requireUserId();
+    final schedule = _routineAssignmentSchedulePayload(
+      scheduleDays: scheduleDays,
+      scheduleHour: scheduleHour,
+      scheduleMinute: scheduleMinute,
+    );
     final created = await _databasePost(
       'routine_assignments',
       [
@@ -1359,8 +1474,10 @@ class ApiClient {
           'notes': notes,
           'start_date': startDate?.toIso8601String().split('T').first,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
+          ...schedule,
         }
       ],
+      mergeDuplicates: true,
     );
     if (created.isEmpty) return null;
     return created.first;

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:calistenia_app/core/api/api_providers.dart';
 import 'package:calistenia_app/features/auth/presentation/providers/auth_controller.dart';
+import 'package:calistenia_app/features/routines/domain/routine_assignment_schedule.dart';
+import 'package:calistenia_app/features/planning/presentation/widgets/routine_schedule_picker_section.dart';
 
 class TeacherStudentsScreen extends ConsumerStatefulWidget {
   const TeacherStudentsScreen({super.key});
@@ -98,6 +100,17 @@ class _TeacherStudentsScreenState extends ConsumerState<TeacherStudentsScreen> {
             )?['name']
             ?.toString() ??
         'Rutina';
+  }
+
+  String _assignmentChipLabel(Map<String, dynamic> assignment) {
+    final name = _routineLabel(assignment['routine_id']?.toString());
+    final schedule = _formatScheduleShort(assignment);
+    if (schedule.isEmpty) return name;
+    return '$name · $schedule';
+  }
+
+  String _formatScheduleShort(Map<String, dynamic> assignment) {
+    return RoutineAssignmentSchedule.formatAssignmentRow(assignment);
   }
 
   /// Agrupa enlaces: primero pendientes/rechazados, luego aprobados por group_name (Insforge).
@@ -233,9 +246,9 @@ class _TeacherStudentsScreenState extends ConsumerState<TeacherStudentsScreen> {
                 children: [
                   _InfoChip(label: '${assignments.length} rutinas asignadas'),
                   if (assignments.isNotEmpty)
-                    ...assignments.take(2).map(
+                    ...assignments.take(3).map(
                           (a) => _InfoChip(
-                            label: _routineLabel(a['routine_id']?.toString()),
+                            label: _assignmentChipLabel(a),
                           ),
                         ),
                 ],
@@ -418,6 +431,8 @@ class _TeacherStudentsScreenState extends ConsumerState<TeacherStudentsScreen> {
     final notesController = TextEditingController();
     var routineId = routineOptions.keys.first;
     var submitting = false;
+    var scheduleDays = <int>{};
+    TimeOfDay? scheduleTime = const TimeOfDay(hour: 10, minute: 0);
 
     try {
       await showDialog<void>(
@@ -429,12 +444,16 @@ class _TeacherStudentsScreenState extends ConsumerState<TeacherStudentsScreen> {
                 if (submitting) return;
                 setLocalState(() => submitting = true);
                 try {
+                  final daysList = scheduleDays.toList()..sort();
                   await ref.read(apiClientProvider).assignRoutineToStudent(
                         routineId: routineId,
                         studentUserId: studentUserId,
                         notes: notesController.text.trim().isEmpty
                             ? null
                             : notesController.text.trim(),
+                        scheduleDays: daysList,
+                        scheduleHour: scheduleTime?.hour,
+                        scheduleMinute: scheduleTime?.minute ?? 0,
                       );
                   if (!dialogContext.mounted || !mounted) return;
                   Navigator.of(dialogContext).pop();
@@ -458,35 +477,53 @@ class _TeacherStudentsScreenState extends ConsumerState<TeacherStudentsScreen> {
                 title: const Text('Asignar rutina'),
                 content: SizedBox(
                   width: 440,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      DropdownButtonFormField<String>(
-                        initialValue: routineId,
-                        decoration: const InputDecoration(labelText: 'Rutina'),
-                        items: routineOptions.entries
-                            .map(
-                              (entry) => DropdownMenuItem(
-                                value: entry.key,
-                                child: Text(entry.value),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setLocalState(() => routineId = value);
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: notesController,
-                        minLines: 2,
-                        maxLines: 4,
-                        decoration: const InputDecoration(
-                          labelText: 'Notas para el alumno',
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          value: routineId,
+                          decoration:
+                              const InputDecoration(labelText: 'Rutina'),
+                          items: routineOptions.entries
+                              .map(
+                                (entry) => DropdownMenuItem(
+                                  value: entry.key,
+                                  child: Text(entry.value),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setLocalState(() => routineId = value);
+                          },
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        RoutineSchedulePickerSection(
+                          daysTitle: '¿Qué días debe hacerla?',
+                          daysHint:
+                              'Opcional. Ejemplo: fuerza lunes, miércoles y viernes a las 10:00.',
+                          timeSubtitle:
+                              'El alumno lo verá en inicio y en Rutinas → Asignadas.',
+                          selectedDays: scheduleDays,
+                          onDaysChanged: (d) =>
+                              setLocalState(() => scheduleDays = d),
+                          selectedTime: scheduleTime,
+                          onTimeChanged: (t) =>
+                              setLocalState(() => scheduleTime = t),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: notesController,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration: const InputDecoration(
+                            labelText: 'Notas para el alumno',
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 actions: [

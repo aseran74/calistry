@@ -96,6 +96,54 @@ class PlanningSlotsNotifier extends StateNotifier<AsyncValue<List<PlanningSlot>>
     await savePlanningSlots(next);
   }
 
+  /// Añade varios huecos (misma rutina, varios días / una hora).
+  Future<void> addSlotsBulk(List<PlanningSlot> newSlots) async {
+    if (newSlots.isEmpty) return;
+    final list = state.valueOrNull ?? [];
+    final added = <PlanningSlot>[];
+
+    if (_isAuthenticated) {
+      try {
+        final client = _ref.read(apiClientProvider);
+        for (final slot in newSlots) {
+          try {
+            final created = await client.addPlanningSlot(
+              dayOfWeek: slot.dayOfWeek,
+              hour: slot.hour,
+              minute: slot.minute,
+              routineId: slot.routineId,
+              routineName: slot.routineName,
+            );
+            if (created != null) {
+              added.add(
+                PlanningSlot(
+                  id: created['id'] as String?,
+                  dayOfWeek: slot.dayOfWeek,
+                  hour: slot.hour,
+                  minute: slot.minute,
+                  routineId: slot.routineId,
+                  routineName: slot.routineName,
+                ),
+              );
+            } else {
+              added.add(slot);
+            }
+          } catch (_) {
+            added.add(slot);
+          }
+        }
+      } catch (_) {
+        added.addAll(newSlots);
+      }
+    } else {
+      added.addAll(newSlots);
+    }
+
+    final next = [...list, ...added];
+    state = AsyncValue.data(next);
+    await savePlanningSlots(next);
+  }
+
   Future<void> removeAt(int dayOfWeek, int hour, int minute) async {
     final list = state.valueOrNull ?? [];
     final next = list.where((s) =>

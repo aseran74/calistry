@@ -1,13 +1,27 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:calistenia_app/core/router/student_shell_routes.dart';
+import 'package:calistenia_app/core/shell/student_shell_layout.dart';
 import 'package:calistenia_app/features/auth/presentation/providers/auth_controller.dart';
 import 'package:calistenia_app/features/routines/presentation/providers/routines_provider.dart';
 import 'package:calistenia_app/core/api/api_providers.dart';
 import 'package:calistenia_app/features/progress/presentation/providers/progress_provider.dart';
 import 'package:calistenia_app/features/planning/presentation/providers/planning_provider.dart';
 import 'package:calistenia_app/features/routines/presentation/widgets/routine_card.dart';
-import 'package:calistenia_app/features/routines/domain/models/routine.dart';
+import 'package:calistenia_app/features/routines/presentation/widgets/assigned_routine_summary_card.dart';
+import 'package:calistenia_app/features/planning/presentation/widgets/plan_routine_dialog.dart';
+
+/// En web, [RefreshIndicator] a veces deja el área de lista sin altura útil.
+Widget _maybeRefreshIndicator({
+  required bool useIndicator,
+  required Future<void> Function() onRefresh,
+  required Widget child,
+}) {
+  if (!useIndicator) return child;
+  return RefreshIndicator(onRefresh: onRefresh, child: child);
+}
 
 class RoutinesScreen extends ConsumerStatefulWidget {
   const RoutinesScreen({super.key});
@@ -17,25 +31,34 @@ class RoutinesScreen extends ConsumerStatefulWidget {
 }
 
 class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
-  bool _didAutoSelectTab = false;
+  /// Evita forzar "mine" al profesor más de una vez por sesión.
+  bool _teacherDefaultTabApplied = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final auth = ref.watch(authControllerProvider);
-    final tab = ref.watch(routinesTabProvider);
-    final routinesAsync = ref.watch(routinesListProvider(tab));
-    final assignedAsync = ref.watch(assignedRoutinesProvider);
 
-    // En usuario normal, por defecto mostramos "Asignadas" para que vea
-    // primero lo que le manda el profesor. En profesor dejamos "Mis Rutinas".
-    if (!_didAutoSelectTab && !auth.isTeacher && tab == 'mine') {
-      _didAutoSelectTab = true;
+    if (!auth.isAuthenticated) {
+      _teacherDefaultTabApplied = false;
+    } else if (auth.isTeacher && !_teacherDefaultTabApplied) {
+      _teacherDefaultTabApplied = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        ref.read(routinesTabProvider.notifier).state = 'assigned';
+        if (ref.read(routinesTabProvider) == 'assigned') {
+          ref.read(routinesTabProvider.notifier).state = 'mine';
+        }
       });
     }
+
+    final tab = ref.watch(routinesTabProvider);
+    // Precargar siempre mine + explore: si solo se observaba tab "assigned",
+    // "Mis rutinas" no se cargaba hasta cambiar de pestaña y parecía vacía.
+    final mineRoutinesAsync = ref.watch(routinesListProvider('mine'));
+    final exploreRoutinesAsync = ref.watch(routinesListProvider('explore'));
+    final assignedAsync = ref.watch(assignedRoutinesProvider);
+    final routinesAsync =
+        tab == 'explore' ? exploreRoutinesAsync : mineRoutinesAsync;
 
     return Scaffold(
       appBar: AppBar(
@@ -48,7 +71,8 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
         ],
       ),
       body: Column(
-        children: [
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           // Selector de pestañas manual (más estable)
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -61,7 +85,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                   theme: theme,
                   onTap: () {
                     ref.read(routinesTabProvider.notifier).state = 'mine';
-                    ref.invalidate(routinesListProvider);
+                    ref.invalidate(routinesListProvider('mine'));
                   },
                 ),
                 const SizedBox(width: 12),
@@ -83,7 +107,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                   theme: theme,
                   onTap: () {
                     ref.read(routinesTabProvider.notifier).state = 'explore';
-                    ref.invalidate(routinesListProvider);
+                    ref.invalidate(routinesListProvider('explore'));
                   },
                 ),
               ],
@@ -92,21 +116,26 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
 
           // Lista de rutinas
           Expanded(
-            child: RefreshIndicator(
+            child: _maybeRefreshIndicator(
+              useIndicator: !kIsWeb,
               onRefresh: () async {
                 if (tab == 'assigned') {
                   ref.invalidate(assignedRoutinesProvider);
+                } else if (tab == 'explore') {
+                  ref.invalidate(routinesListProvider('explore'));
                 } else {
-                  ref.invalidate(routinesListProvider);
+                  ref.invalidate(routinesListProvider('mine'));
                 }
               },
               child: tab == 'assigned'
                   ? assignedAsync.when(
                       loading: () => ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        children: const [
-                          SizedBox(height: 120),
-                          Center(child: CircularProgressIndicator()),
+                        children: [
+                          SizedBox(
+                              height: StudentShellLayout.scrollBottomSpacer(
+                                  context)),
+                          const Center(child: CircularProgressIndicator()),
                         ],
                       ),
                       error: (e, _) => ListView(
@@ -117,6 +146,8 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                         ],
                       ),
                       data: (items) {
+                        // Misma lógica que Home: assignedRoutinesProvider +
+                        // AssignedRoutineSummaryCard.parseRoutine / tarjeta única.
                         if (items.isEmpty) {
                           return ListView(
                             physics: const AlwaysScrollableScrollPhysics(),
@@ -160,122 +191,86 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                           );
                         }
 
-                        return ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: items.length,
-                          itemBuilder: (context, index) {
-                            final item = items[index];
-                            final rawRoutine = item['routine'];
-                            final Map<String, dynamic>? routineJson =
-                                rawRoutine is Map<String, dynamic>
-                                    ? rawRoutine
-                                    : (rawRoutine is List && rawRoutine.isNotEmpty)
-                                        ? (rawRoutine.first is Map
-                                            ? Map<String, dynamic>.from(
-                                                rawRoutine.first as Map,
-                                              )
-                                            : null)
-                                        : null;
-                            final routineId = (item['routine_id'] ??
-                                        item['routineId'] ??
-                                        routineJson?['id'])
-                                    ?.toString() ??
-                                '';
-                            final routine = routineJson != null ? Routine.fromJson(routineJson) : null;
-                            final rawTeacher = item['teacher_user'];
-                            final Map<String, dynamic>? teacher =
-                                rawTeacher is Map<String, dynamic>
-                                    ? rawTeacher
-                                    : (rawTeacher is List && rawTeacher.isNotEmpty)
-                                        ? (rawTeacher.first is Map
-                                            ? Map<String, dynamic>.from(
-                                                rawTeacher.first as Map,
-                                              )
-                                            : null)
-                                        : null;
-                            final teacherLabel =
-                                teacher?['username']?.toString().isNotEmpty ==
-                                        true
-                                    ? teacher!['username'].toString()
-                                    : teacher?['email']?.toString();
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if ((teacherLabel ?? '').isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: 6,
-                                        bottom: 6,
+                        final anyVisible = items.any(
+                          (it) =>
+                              AssignedRoutineSummaryCard.parseRoutine(it) !=
+                              null,
+                        );
+                        if (!anyVisible) {
+                          return ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: EdgeInsets.fromLTRB(
+                              16,
+                              24,
+                              16,
+                              StudentShellLayout.bodyBottomPadding(context),
+                            ),
+                            children: [
+                              Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(18),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.assignment_outlined,
+                                        size: 34,
+                                        color: theme.colorScheme.outline,
                                       ),
-                                      child: Text(
-                                        'Asignada por: $teacherLabel',
-                                        style: theme.textTheme.bodySmall
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        'Rutina asignada no accesible',
+                                        style: theme.textTheme.titleMedium
                                             ?.copyWith(
-                                          color: theme.colorScheme
-                                              .onSurfaceVariant,
+                                          fontWeight: FontWeight.w800,
                                         ),
+                                        textAlign: TextAlign.center,
                                       ),
-                                    ),
-                                  if (routine != null)
-                                    RoutineCard(
-                                      routine: routine,
-                                      exerciseCount: 0,
-                                      estimatedSeconds: 0,
-                                      firstExerciseImageUrl: null,
-                                      onTap: () => context.push(
-                                        '/routines/${routine.id}/play',
-                                        extra: routine,
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Hay asignaciones pero no se pudieron mostrar. Revisa la conexión o vuelve a entrar.',
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                          color: theme
+                                              .colorScheme.onSurfaceVariant,
+                                        ),
+                                        textAlign: TextAlign.center,
                                       ),
-                                      onMarkDone: () async {
-                                        try {
-                                          await ref
-                                              .read(apiClientProvider)
-                                              .saveProgress(
-                                                routineId: routine.id,
-                                                durationSeconds: null,
-                                                notes: null,
-                                              );
-                                          ref.invalidate(userProgressListProvider);
-                                          ref.invalidate(planningSlotsProvider);
-                                          if (!mounted) return;
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                  'Rutina marcada como hecha'),
-                                            ),
-                                          );
-                                        } catch (e) {
-                                          if (!mounted) return;
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(content: Text('Error: $e')),
-                                          );
-                                        }
-                                      },
-                                    )
-                                  else
-                                    _AssignedRoutineFallbackCard(
-                                      routineId: routineId,
-                                      teacherLabel: teacherLabel,
-                                      debugKeys: item.keys.map((e) => e.toString()).toList(),
-                                    ),
-                                ],
+                                    ],
+                                  ),
+                                ),
                               ),
-                            );
-                          },
+                            ],
+                          );
+                        }
+
+                        return ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(
+                            16,
+                            0,
+                            16,
+                            StudentShellLayout.bodyBottomPadding(context),
+                          ),
+                          children: [
+                            for (final item in items) ...[
+                              AssignedRoutineSummaryCard(
+                                item: Map<String, dynamic>.from(item),
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                          ],
                         );
                       },
                     )
                   : routinesAsync.when(
               loading: () => ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 120),
-                  Center(child: CircularProgressIndicator()),
+                children: [
+                  SizedBox(
+                      height:
+                          StudentShellLayout.scrollBottomSpacer(context)),
+                  const Center(child: CircularProgressIndicator()),
                 ],
               ),
               error: (e, _) => ListView(
@@ -297,10 +292,17 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                   final subtitle = tab == 'explore'
                       ? 'Vuelve más tarde o busca por profesores.'
                       : 'Crea una rutina para empezar a entrenar.';
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Card(
+                  // ListView + physics: RefreshIndicator y layout web (sidebar).
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      24,
+                      16,
+                      StudentShellLayout.bodyBottomPadding(context),
+                    ),
+                    children: [
+                      Card(
                         child: Padding(
                           padding: const EdgeInsets.all(18),
                           child: Column(
@@ -330,7 +332,9 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                               if (tab == 'mine') ...[
                                 const SizedBox(height: 12),
                                 FilledButton.icon(
-                                  onPressed: () => context.push('/routines/create'),
+                                  onPressed: () => context.push(
+                                    StudentShellRoutes.routineCreate,
+                                  ),
                                   icon: const Icon(Icons.add),
                                   label: const Text('Crear rutina'),
                                 ),
@@ -339,13 +343,18 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   );
                 }
 
                 return ListView.builder(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    0,
+                    16,
+                    StudentShellLayout.bodyBottomPadding(context),
+                  ),
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final routine = filtered[index];
@@ -357,9 +366,18 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                         estimatedSeconds: 0,
                         firstExerciseImageUrl: null,
                         onTap: () => context.push(
-                          '/routines/${routine.id}/play',
+                          StudentShellRoutes.routinePlay(routine.id),
                           extra: routine,
                         ),
+                        onWeeklySchedule: tab == 'mine'
+                            ? () => showPlanRoutineDialog(
+                                  context,
+                                  ref,
+                                  presetRoutineId: routine.id,
+                                  presetRoutineName: routine.name,
+                                  lockRoutineSelection: true,
+                                )
+                            : null,
                         onMarkDone: () async {
                           try {
                             await ref.read(apiClientProvider).saveProgress(
@@ -392,7 +410,8 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
       ),
       floatingActionButton: tab == 'mine'
           ? FloatingActionButton(
-              onPressed: () => context.push('/routines/create'),
+              onPressed: () =>
+                  context.push(StudentShellRoutes.routineCreate),
               backgroundColor: theme.colorScheme.primary,
               child: const Icon(Icons.add, color: Colors.white),
             )
@@ -430,84 +449,6 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _AssignedRoutineFallbackCard extends ConsumerWidget {
-  const _AssignedRoutineFallbackCard({
-    required this.routineId,
-    required this.teacherLabel,
-    required this.debugKeys,
-  });
-
-  final String routineId;
-  final String? teacherLabel;
-  final List<String> debugKeys;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    if (routineId.isEmpty) {
-      return Card(
-        child: ListTile(
-          leading: const Icon(Icons.error_outline),
-          title: const Text('Rutina asignada'),
-          subtitle: Text(
-            'No se pudo obtener el id de rutina.\nCampos: ${debugKeys.join(', ')}',
-          ),
-        ),
-      );
-    }
-
-    return FutureBuilder<Map<String, dynamic>?>(
-      future: ref.read(apiClientProvider).getRoutineById(routineId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Card(
-            child: ListTile(
-              leading: Icon(Icons.hourglass_bottom),
-              title: Text('Cargando rutina...'),
-            ),
-          );
-        }
-        final json = snapshot.data;
-        if (json == null) {
-          return Card(
-            child: ListTile(
-              leading: const Icon(Icons.lock_outline),
-              title: const Text('Rutina no accesible'),
-              subtitle: Text('Id: $routineId'),
-            ),
-          );
-        }
-        final routine = Routine.fromJson(json);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if ((teacherLabel ?? '').isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(left: 6, bottom: 6),
-                child: Text(
-                  'Asignada por: $teacherLabel',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            RoutineCard(
-              routine: routine,
-              exerciseCount: 0,
-              estimatedSeconds: 0,
-              firstExerciseImageUrl: null,
-              onTap: () => GoRouter.of(context).push(
-                '/routines/${routine.id}/play',
-                extra: routine,
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 }

@@ -7,148 +7,157 @@ import 'package:calistenia_app/features/routines/presentation/providers/create_r
 import 'package:calistenia_app/features/routines/presentation/providers/routines_provider.dart';
 import 'package:calistenia_app/features/routines/presentation/widgets/add_exercise_sheet.dart';
 
+/// Pantalla nueva: una sola [ListView] (sin ReorderableList ni shrinkWrap).
 class CreateRoutineScreen extends ConsumerStatefulWidget {
   const CreateRoutineScreen({super.key});
 
   @override
-  ConsumerState<CreateRoutineScreen> createState() => _CreateRoutineScreenState();
+  ConsumerState<CreateRoutineScreen> createState() =>
+      _CreateRoutineScreenState();
 }
 
 class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
-  final _nameController = TextEditingController();
-  final _descController = TextEditingController();
+  final _name = TextEditingController();
+  final _desc = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(createRoutineProvider.notifier).clear();
+      ref.read(createRoutineProvider.notifier).reset();
+      _name.clear();
+      _desc.clear();
     });
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _descController.dispose();
+    _name.dispose();
+    _desc.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(createRoutineProvider);
+    final draft = ref.watch(createRoutineProvider);
+    final notifier = ref.read(createRoutineProvider.notifier);
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nueva rutina'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Nombre',
-                border: OutlineInputBorder(),
-              ),
-              onChanged: ref.read(createRoutineProvider.notifier).setName,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _descController,
-              decoration: const InputDecoration(
-                labelText: 'Descripción',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-              onChanged: ref.read(createRoutineProvider.notifier).setDescription,
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: state.level,
-              decoration: const InputDecoration(
-                labelText: 'Nivel',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'principiante', child: Text('Principiante')),
-                DropdownMenuItem(value: 'intermedio', child: Text('Intermedio')),
-                DropdownMenuItem(value: 'avanzado', child: Text('Avanzado')),
-              ],
-              onChanged: (v) {
-                if (v != null) ref.read(createRoutineProvider.notifier).setLevel(v);
-              },
-            ),
-            const SizedBox(height: 12),
-            SwitchListTile(
-              title: const Text('Rutina pública'),
-              value: state.isPublic,
-              onChanged: ref.read(createRoutineProvider.notifier).setPublic,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      appBar: AppBar(title: const Text('Nueva rutina')),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               children: [
-                Text('Ejercicios', style: theme.textTheme.titleMedium),
-                Text(
-                  'Duración aprox: ${_formatDuration(state.estimatedSeconds)}',
-                  style: theme.textTheme.bodySmall,
+                TextField(
+                  controller: _name,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: notifier.setName,
+                  textInputAction: TextInputAction.next,
                 ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _desc,
+                  decoration: const InputDecoration(
+                    labelText: 'Descripción (opcional)',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                  onChanged: notifier.setDescription,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: draft.level,
+                  decoration: const InputDecoration(
+                    labelText: 'Nivel',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'principiante',
+                      child: Text('Principiante'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'intermedio',
+                      child: Text('Intermedio'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'avanzado',
+                      child: Text('Avanzado'),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) notifier.setLevel(v);
+                  },
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  title: const Text('Rutina pública'),
+                  value: draft.isPublic,
+                  onChanged: notifier.setPublic,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Ejercicios', style: theme.textTheme.titleMedium),
+                    Text(
+                      'Duración aprox: ${_formatDuration(draft.estimatedSeconds)}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => _openPicker(context),
+                  icon: const Icon(Icons.add),
+                  label: Text(
+                    draft.items.isEmpty
+                        ? 'Buscar y agregar ejercicios'
+                        : 'Agregar más ejercicios',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...List.generate(draft.items.length, (index) {
+                  final item = draft.items[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _DraftExerciseCard(
+                      key: ValueKey(item.id),
+                      item: item,
+                      index: index,
+                      lastIndex: draft.items.length - 1,
+                      onMoveUp: () => notifier.moveUp(index),
+                      onMoveDown: () => notifier.moveDown(index),
+                      onRemove: () => notifier.removeAt(index),
+                      onUpdate: (s, r, rest) =>
+                          notifier.updateItem(index, sets: s, reps: r, restSeconds: rest),
+                    ),
+                  );
+                }),
               ],
             ),
-            const SizedBox(height: 8),
-            if (state.items.isEmpty)
-              OutlinedButton.icon(
-                onPressed: () => _openAddExercise(context, ref),
-                icon: const Icon(Icons.add),
-                label: const Text('Buscar y agregar ejercicios'),
-              )
-            else
-              ReorderableListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: state.items.length,
-                onReorder: (oldIndex, newIndex) {
-                  ref.read(createRoutineProvider.notifier).reorder(oldIndex, newIndex);
-                },
-                itemBuilder: (context, index) {
-                  final item = state.items[index];
-                  return _OrderableRoutineItem(
-                    key: ValueKey(item.exerciseId + '$index'),
-                    item: item,
-                    index: index,
-                    onUpdate: (s, r, rest) {
-                      ref.read(createRoutineProvider.notifier).updateItem(
-                            index,
-                            sets: s,
-                            reps: r,
-                            restSeconds: rest,
-                          );
-                    },
-                    onRemove: () =>
-                        ref.read(createRoutineProvider.notifier).removeItem(index),
-                  );
-                },
+          ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: FilledButton(
+                onPressed: draft.canSubmit
+                    ? () => _submit(context, draft)
+                    : null,
+                child: const Text('Crear rutina'),
               ),
-            if (state.items.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () => _openAddExercise(context, ref),
-                icon: const Icon(Icons.add),
-                label: const Text('Agregar más ejercicios'),
-              ),
-            ],
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: state.name.trim().isEmpty || state.items.isEmpty
-                  ? null
-                  : () => _saveRoutine(context, ref),
-              child: const Text('Crear rutina'),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -161,39 +170,40 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
     return '${m}min ${s}s';
   }
 
-  Future<void> _openAddExercise(BuildContext context, WidgetRef ref) async {
+  Future<void> _openPicker(BuildContext context) async {
     final client = ref.read(apiClientProvider);
     final list = await client.getExercises(limit: 50);
     if (!context.mounted) return;
-    showModalBottomSheet(
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => AddExerciseSheet(
+      builder: (ctx) => AddExerciseSheet(
         exercises: list,
         onSelect: (item) {
-          ref.read(createRoutineProvider.notifier).addItem(item);
+          ref.read(createRoutineProvider.notifier).addExercise(item);
         },
       ),
     );
   }
 
-  Future<void> _saveRoutine(BuildContext context, WidgetRef ref) async {
-    final state = ref.read(createRoutineProvider);
+  Future<void> _submit(BuildContext context, CreateRoutineDraft draft) async {
     final client = ref.read(apiClientProvider);
-    final exercises = state.items
-        .map((e) => e.toCreateJson())
-        .toList();
+    final exercises =
+        draft.items.map((e) => e.toCreateJson()).toList();
     try {
       final result = await client.createRoutine(
-        name: state.name.trim(),
-        description: state.description.trim().isEmpty ? null : state.description.trim(),
-        level: state.level,
-        isPublic: state.isPublic,
+        name: draft.name.trim(),
+        description:
+            draft.description.trim().isEmpty ? null : draft.description.trim(),
+        level: draft.level,
+        isPublic: draft.isPublic,
         exercises: exercises,
       );
       if (!context.mounted) return;
       if (result != null) {
-        ref.read(createRoutineProvider.notifier).clear();
+        ref.read(createRoutineProvider.notifier).reset();
+        _name.clear();
+        _desc.clear();
         ref.invalidate(routinesListProvider('mine'));
         ref.invalidate(routinesListProvider('explore'));
         if (!context.mounted) return;
@@ -215,78 +225,135 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
   }
 }
 
-class _OrderableRoutineItem extends StatelessWidget {
-  const _OrderableRoutineItem({
+class _DraftExerciseCard extends StatelessWidget {
+  const _DraftExerciseCard({
     super.key,
     required this.item,
     required this.index,
-    required this.onUpdate,
+    required this.lastIndex,
+    required this.onMoveUp,
+    required this.onMoveDown,
     required this.onRemove,
+    required this.onUpdate,
   });
 
   final RoutineExerciseItem item;
   final int index;
-  final void Function(int? sets, int? reps, int? restSeconds) onUpdate;
+  final int lastIndex;
+  final VoidCallback onMoveUp;
+  final VoidCallback onMoveDown;
   final VoidCallback onRemove;
+  final void Function(int? sets, int? reps, int? restSeconds) onUpdate;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final name = item.exercise?.name ?? 'Ejercicio';
-    final thumbnail = item.exercise?.imageUrl ?? '';
+    final thumb = item.exercise?.imageUrl ?? '';
 
     return Card(
-      key: key,
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: ReorderableDragStartListener(
-          index: index,
-          child: thumbnail.isNotEmpty
-              ? CachedNetworkImage(
-                  imageUrl: thumbnail,
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.cover,
-                )
-              : const Icon(Icons.drag_handle),
-        ),
-        title: Text(name),
-        subtitle: Row(
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(
-              width: 48,
-              child: TextFormField(
-                initialValue: '${item.sets ?? 0}',
-                decoration: const InputDecoration(labelText: 'Sets'),
-                keyboardType: TextInputType.number,
-                onChanged: (v) => onUpdate(int.tryParse(v), item.reps, item.restSeconds),
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Subir',
+                      onPressed: index > 0 ? onMoveUp : null,
+                      icon: const Icon(Icons.arrow_upward),
+                    ),
+                    IconButton(
+                      tooltip: 'Bajar',
+                      onPressed: index < lastIndex ? onMoveDown : null,
+                      icon: const Icon(Icons.arrow_downward),
+                    ),
+                  ],
+                ),
+                if (thumb.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: thumb,
+                      width: 56,
+                      height: 56,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                else
+                  const SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: Icon(Icons.fitness_center),
+                  ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    name,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Quitar',
+                  onPressed: onRemove,
+                  icon: const Icon(Icons.close),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 48,
-              child: TextFormField(
-                initialValue: '${item.reps ?? 0}',
-                decoration: const InputDecoration(labelText: 'Reps'),
-                keyboardType: TextInputType.number,
-                onChanged: (v) => onUpdate(item.sets, int.tryParse(v), item.restSeconds),
-              ),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 56,
-              child: TextFormField(
-                initialValue: '${item.restSeconds ?? 0}',
-                decoration: const InputDecoration(labelText: 'Desc'),
-                keyboardType: TextInputType.number,
-                onChanged: (v) => onUpdate(item.sets, item.reps, int.tryParse(v)),
-              ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    key: ValueKey('${item.id}_sets'),
+                    initialValue: '${item.sets ?? 0}',
+                    decoration: const InputDecoration(
+                      labelText: 'Sets',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) =>
+                        onUpdate(int.tryParse(v), item.reps, item.restSeconds),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextFormField(
+                    key: ValueKey('${item.id}_reps'),
+                    initialValue: '${item.reps ?? 0}',
+                    decoration: const InputDecoration(
+                      labelText: 'Reps',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) =>
+                        onUpdate(item.sets, int.tryParse(v), item.restSeconds),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextFormField(
+                    key: ValueKey('${item.id}_rest'),
+                    initialValue: '${item.restSeconds ?? 0}',
+                    decoration: const InputDecoration(
+                      labelText: 'Desc (s)',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) =>
+                        onUpdate(item.sets, item.reps, int.tryParse(v)),
+                  ),
+                ),
+              ],
             ),
           ],
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: onRemove,
         ),
       ),
     );

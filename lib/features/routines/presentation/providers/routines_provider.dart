@@ -5,23 +5,54 @@ import 'package:calistenia_app/features/routines/domain/models/routine.dart';
 import 'package:calistenia_app/features/routines/domain/models/routine_exercise_item.dart';
 
 /// Tab: 'mine' | 'assigned' | 'explore'
-final routinesTabProvider = StateProvider<String>((ref) => 'mine');
+/// Por defecto "assigned" (alumnos); los profesores pasan a "mine" en [RoutinesScreen].
+final routinesTabProvider = StateProvider<String>((ref) => 'assigned');
 
 final routinesListProvider =
     FutureProvider.family<List<Routine>, String>((ref, tab) async {
   final client = ref.watch(apiClientProvider);
-  final auth = ref.watch(authControllerProvider);
-  final myUserId = auth.session?.user.id;
+  // Depender explícitamente del id para re-ejecutar al hidratar sesión.
+  final myUserId = ref.watch(
+    authControllerProvider.select((a) => a.session?.user.id),
+  );
 
-  // Importante: por permisos/RLS, pedir sin filtros puede devolver vacío.
-  final list = tab == 'mine'
-      ? await client.getRoutines(userId: myUserId ?? '')
-      : await client.getRoutines(isPublic: true);
-  return list.map((e) => Routine.fromJson(e)).toList();
+  // Sin userId aún: no llamar a la API (evita lista vacía cacheada mal).
+  if (tab == 'mine') {
+    if (myUserId == null || myUserId.isEmpty) {
+      return [];
+    }
+    final list = await client.getMyRoutines(limit: 100);
+    final out = <Routine>[];
+    for (final e in list) {
+      try {
+        out.add(Routine.fromJson(e));
+      } catch (_) {
+        // Fila rara de la API: no romper toda la lista.
+      }
+    }
+    return out;
+  }
+
+  final list = await client.getRoutines(isPublic: true);
+  final out = <Routine>[];
+  for (final e in list) {
+    try {
+      out.add(Routine.fromJson(e));
+    } catch (_) {
+      // Fila rara de la API: no romper toda la lista.
+    }
+  }
+  return out;
 });
 
 final assignedRoutinesProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final uid = ref.watch(
+    authControllerProvider.select((a) => a.session?.user.id),
+  );
+  if (uid == null || uid.isEmpty) {
+    return [];
+  }
   final client = ref.watch(apiClientProvider);
   return client.getAssignedRoutines();
 });

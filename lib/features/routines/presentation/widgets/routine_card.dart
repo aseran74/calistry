@@ -12,6 +12,8 @@ class RoutineCard extends StatelessWidget {
     this.firstExerciseImageUrl,
     required this.onTap,
     this.onMarkDone,
+    /// Fijar la rutina en varios días/hora del planning semanal (alumno).
+    this.onWeeklySchedule,
   });
 
   final Routine routine;
@@ -20,35 +22,58 @@ class RoutineCard extends StatelessWidget {
   final String? firstExerciseImageUrl;
   final VoidCallback onTap;
   final VoidCallback? onMarkDone;
+  final VoidCallback? onWeeklySchedule;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final levelColor = DifficultyColors.fromString(routine.level);
 
+    // Altura fija: evita "BoxConstraints forces an infinite height" cuando el padre
+    // es un ListView (eje vertical sin tope) y hay Row(stretch) + Stack(expand).
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: SizedBox(
-          height: 132,
-          child: Row(
-            children: [
-              Expanded(
+      child: SizedBox(
+        height: 132,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(20),
                 child: _buildContent(theme, levelColor),
               ),
-              if (onMarkDone != null)
-                IconButton(
-                  onPressed: onMarkDone,
-                  tooltip: 'Marcar como hecha',
-                  icon: Icon(
-                    Icons.check_circle_outline,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-            ],
-          ),
+            ),
+            if (onWeeklySchedule != null || onMarkDone != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 4, top: 4, bottom: 4),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                  if (onWeeklySchedule != null)
+                    IconButton(
+                      onPressed: onWeeklySchedule,
+                      tooltip: 'Horario semanal',
+                      icon: Icon(
+                        Icons.event_repeat_outlined,
+                        color: theme.colorScheme.tertiary,
+                      ),
+                    ),
+                  if (onMarkDone != null)
+                    IconButton(
+                      onPressed: onMarkDone,
+                      tooltip: 'Marcar como hecha',
+                      icon: Icon(
+                        Icons.check_circle_outline,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -56,10 +81,11 @@ class RoutineCard extends StatelessWidget {
 
   Widget _buildContent(ThemeData theme, Color levelColor) {
     return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
               width: 116,
+              height: 132,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -120,6 +146,7 @@ class RoutineCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       routine.name,

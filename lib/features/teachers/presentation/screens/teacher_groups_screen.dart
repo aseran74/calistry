@@ -36,40 +36,201 @@ class _TeacherGroupsScreenState extends ConsumerState<TeacherGroupsScreen> {
     }
   }
 
+  String _userLabel(Map<String, dynamic>? user) {
+    final username = user?['username']?.toString();
+    if (username != null && username.isNotEmpty) return username;
+    final email = user?['email']?.toString();
+    if (email != null && email.isNotEmpty) return email;
+    return 'Alumno';
+  }
+
   Future<void> _createGroup() async {
-    final controller = TextEditingController();
+    final api = ref.read(apiClientProvider);
+    List<Map<String, dynamic>> users = const [];
     try {
-      final name = await showDialog<String>(
+      final links = await api.getMyTeacherStudentLinks(
+        asTeacher: true,
+        status: 'approved',
+      );
+      final studentIds = links
+          .map((l) => l['student_user_id']?.toString())
+          .whereType<String>()
+          .toSet()
+          .toList();
+      users = await api.getUsersByIds(studentIds);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudieron cargar alumnos: $e')),
+      );
+      return;
+    }
+    if (!mounted) return;
+
+    final nameController = TextEditingController();
+    final selectedIds = <String>{};
+    try {
+      final result = await showDialog<_CreateGroupResult>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Crear grupo'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'Nombre del grupo',
-              hintText: 'Ej: Mañanas, Avanzados',
-            ),
-            onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-              child: const Text('Crear'),
-            ),
-          ],
+        builder: (ctx) => StatefulBuilder(
+          builder: (context, setLocal) {
+            return AlertDialog(
+              title: const Text('Crear grupo'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: nameController,
+                        autofocus: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre del grupo',
+                          hintText: 'Ej: Tercera edad Madrid, Mañanas…',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Alumnos en el grupo',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Marca los alumnos que quieras añadir (puedes dejarlo vacío y añadirlos después).',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (users.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(
+                            'Aún no tienes alumnos vinculados y aprobados. Invítalos desde el panel del profesor.',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        )
+                      else
+                        ...users.map((u) {
+                          final id = u['id']?.toString() ?? '';
+                          if (id.isEmpty) return const SizedBox.shrink();
+                          final checked = selectedIds.contains(id);
+                          return CheckboxListTile(
+                            value: checked,
+                            onChanged: (v) => setLocal(() {
+                              if (v == true) {
+                                selectedIds.add(id);
+                              } else {
+                                selectedIds.remove(id);
+                              }
+                            }),
+                            controlAffinity: ListTileControlAffinity.leading,
+                            dense: true,
+                            title: Text(_userLabel(u)),
+                            subtitle: Text(
+                              u['email']?.toString() ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final name = nameController.text.trim();
+                    if (name.isEmpty) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(
+                          content: Text('Escribe un nombre para el grupo'),
+                        ),
+                      );
+                      return;
+                    }
+                    Navigator.of(ctx).pop(
+                      _CreateGroupResult(
+                        name: name,
+                        studentUserIds: selectedIds.toList(),
+                      ),
+                    );
+                  },
+                  child: const Text('Crear'),
+                ),
+              ],
+            );
+          },
         ),
       );
-      if (name == null || name.trim().isEmpty) return;
-      await ref.read(apiClientProvider).createTeacherGroup(name: name.trim());
+      if (result == null) return;
+
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const PopScope(
+          canPop: false,
+          child: AlertDialog(
+            content: Row(
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(width: 20),
+                Expanded(child: Text('Creando grupo…')),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      try {
+        final created = await api.createTeacherGroup(name: result.name);
+        final groupId = created?['id']?.toString();
+        if (groupId == null || groupId.isEmpty) {
+          throw Exception('No se recibió el id del grupo');
+        }
+        for (final sid in result.studentUserIds) {
+          await api.addStudentToGroup(
+            groupId: groupId,
+            studentUserId: sid,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al crear el grupo: $e')),
+          );
+        }
+        return;
+      } finally {
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+      }
+
       if (!mounted) return;
       await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.studentUserIds.isEmpty
+                ? 'Grupo creado'
+                : 'Grupo creado con ${result.studentUserIds.length} alumno(s)',
+          ),
+        ),
+      );
     } finally {
-      controller.dispose();
+      nameController.dispose();
     }
   }
 
@@ -140,5 +301,14 @@ class _TeacherGroupsScreenState extends ConsumerState<TeacherGroupsScreen> {
             ),
     );
   }
+}
+
+class _CreateGroupResult {
+  _CreateGroupResult({
+    required this.name,
+    required this.studentUserIds,
+  });
+  final String name;
+  final List<String> studentUserIds;
 }
 

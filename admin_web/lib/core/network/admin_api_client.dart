@@ -566,13 +566,47 @@ class AdminApiClient {
           .map((row) => Map<String, dynamic>.from(row))
           .toList();
     }
-    if (decoded is Map<String, dynamic> && decoded['data'] is List) {
-      return (decoded['data'] as List)
-          .whereType<Map>()
-          .map((row) => Map<String, dynamic>.from(row))
-          .toList();
+    if (decoded is Map<String, dynamic>) {
+      // Supabase-style: { data: [...] }
+      final data = decoded['data'];
+      if (data is List) {
+        return data
+            .whereType<Map>()
+            .map((row) => Map<String, dynamic>.from(row))
+            .toList();
+      }
+
+      // Otras variantes reportadas por Insforge: { rows: [...] }, { result: [...] }, etc.
+      final rows = decoded['rows'];
+      if (rows is List) {
+        return rows
+            .whereType<Map>()
+            .map((row) => Map<String, dynamic>.from(row))
+            .toList();
+      }
+
+      for (final key in const ['result', 'items', 'records']) {
+        final v = decoded[key];
+        if (v is List) {
+          return v
+              .whereType<Map>()
+              .map((row) => Map<String, dynamic>.from(row))
+              .toList();
+        }
+      }
+
+      // Fallback: si hay alguna lista en el primer nivel, úsala.
+      for (final entry in decoded.entries) {
+        final v = entry.value;
+        if (v is List) {
+          return v
+              .whereType<Map>()
+              .map((row) => Map<String, dynamic>.from(row))
+              .toList();
+        }
+      }
     }
-    return [];
+    return <Map<String, dynamic>>[];
   }
 
   String _extractErrorMessage(http.Response response) {

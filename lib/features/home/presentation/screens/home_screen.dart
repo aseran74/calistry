@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:calistenia_app/core/router/student_shell_routes.dart';
+import 'package:calistenia_app/core/shell/student_shell_layout.dart';
 import 'package:calistenia_app/core/api/api_providers.dart';
 import 'package:calistenia_app/features/auth/presentation/providers/auth_controller.dart';
 import 'package:calistenia_app/features/exercises/presentation/widgets/exercise_card.dart';
@@ -9,6 +11,7 @@ import 'package:calistenia_app/features/planning/presentation/providers/planning
 import 'package:calistenia_app/features/progress/presentation/providers/progress_provider.dart';
 import 'package:calistenia_app/features/routines/domain/models/routine.dart';
 import 'package:calistenia_app/features/routines/presentation/providers/routines_provider.dart';
+import 'package:calistenia_app/features/routines/presentation/widgets/assigned_routine_summary_card.dart';
 
 const _categories = [
   'fuerza',
@@ -92,7 +95,12 @@ class HomeScreen extends ConsumerWidget {
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 120),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            10,
+            16,
+            StudentShellLayout.bodyBottomPadding(context),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -152,12 +160,13 @@ class HomeScreen extends ConsumerWidget {
                 },
               ),
               const SizedBox(height: 18),
-              _ContinuarEntrenamiento(onTap: () => context.go('/routines')),
+              _ContinuarEntrenamiento(
+                  onTap: () => context.go(StudentShellRoutes.routines)),
               const SizedBox(height: 10),
               _CategoryButton(
                 label: 'Planning',
                 icon: Icons.calendar_month_outlined,
-                onTap: () => context.push('/planning'),
+                onTap: () => context.go(StudentShellRoutes.planning),
               ),
               if (!auth.isTeacher) ...[
                 const SizedBox(height: 26),
@@ -183,62 +192,27 @@ class HomeScreen extends ConsumerWidget {
                             'Cuando un profesor te envíe una rutina aparecerá aquí.',
                       );
                     }
-                    final item = assigned.first;
-                    final rawRoutine = item['routine'];
-                    final Map<String, dynamic>? routineJson =
-                        rawRoutine is Map<String, dynamic>
-                            ? rawRoutine
-                            : (rawRoutine is List && rawRoutine.isNotEmpty)
-                                ? (rawRoutine.first is Map
-                                    ? Map<String, dynamic>.from(
-                                        rawRoutine.first as Map,
-                                      )
-                                    : null)
-                                : null;
-                    if (routineJson == null) {
+                    final anyVisible = assigned.any(
+                      (it) => AssignedRoutineSummaryCard.parseRoutine(it) != null,
+                    );
+                    if (!anyVisible) {
                       return const _InfoPanel(
                         icon: Icons.assignment_outlined,
                         title: 'Rutina asignada no accesible',
                         subtitle:
-                            'Hay una asignación pero no se pudo cargar la rutina.',
+                            'Hay asignaciones pero no se pudieron cargar las rutinas.',
                       );
                     }
-                    final routine = Routine.fromJson(routineJson);
-
-                    final rawTeacher = item['teacher_user'];
-                    final Map<String, dynamic>? teacher =
-                        rawTeacher is Map<String, dynamic>
-                            ? rawTeacher
-                            : (rawTeacher is List && rawTeacher.isNotEmpty)
-                                ? (rawTeacher.first is Map
-                                    ? Map<String, dynamic>.from(
-                                        rawTeacher.first as Map,
-                                      )
-                                    : null)
-                                : null;
-                    final teacherLabel =
-                        teacher?['username']?.toString().isNotEmpty == true
-                            ? teacher!['username'].toString()
-                            : teacher?['email']?.toString() ?? 'Profesor';
-                    return Card(
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(16),
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.assignment_turned_in_outlined),
-                        ),
-                        title: Text(routine.name),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            'Asignada por $teacherLabel · ${routine.level}',
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final item in assigned) ...[
+                          AssignedRoutineSummaryCard(
+                            item: Map<String, dynamic>.from(item),
                           ),
-                        ),
-                        trailing: const Icon(Icons.chevron_right_rounded),
-                        onTap: () => context.push(
-                          '/routines/${routine.id}/play',
-                          extra: routine,
-                        ),
-                      ),
+                          const SizedBox(height: 12),
+                        ],
+                      ],
                     );
                   },
                 ),
@@ -256,13 +230,14 @@ class HomeScreen extends ConsumerWidget {
                   final rutinaDelDia = list.isNotEmpty ? list.first : null;
                   if (rutinaDelDia == null) {
                     return _EmptyRoutineCard(
-                      onTap: () => context.push('/routines/create'),
+                      onTap: () =>
+                          context.push(StudentShellRoutes.routineCreate),
                     );
                   }
                   return _RutinaDelDiaCard(
                     routine: rutinaDelDia,
                     onTap: () => context.push(
-                      '/routines/${rutinaDelDia.id}/play',
+                      StudentShellRoutes.routinePlay(rutinaDelDia.id),
                       extra: rutinaDelDia,
                     ),
                     onMarkDone: () async {
@@ -297,7 +272,7 @@ class HomeScreen extends ConsumerWidget {
                 title: 'Destacados',
                 subtitle: 'Movimientos clave para mantener el progreso',
                 actionLabel: 'Ver todos',
-                onAction: () => context.go('/exercises'),
+                onAction: () => context.go(StudentShellRoutes.exercises),
               ),
               const SizedBox(height: 10),
               featuredAsync.when(
@@ -330,7 +305,7 @@ class HomeScreen extends ConsumerWidget {
                           child: ExerciseCard(
                             exercise: ex,
                             onTap: () => context.push(
-                              '/exercises/${ex.id}',
+                              StudentShellRoutes.exerciseDetail(ex.id),
                               extra: ex,
                             ),
                           ),
@@ -394,7 +369,9 @@ class HomeScreen extends ConsumerWidget {
                   return _CategoryButton(
                     label: label,
                     icon: _categoryIcon(c),
-                    onTap: () => context.go('/exercises?category=$c'),
+                    onTap: () => context.go(
+                          StudentShellRoutes.exercisesWithCategory(c),
+                        ),
                   );
                 }).toList(),
               ),

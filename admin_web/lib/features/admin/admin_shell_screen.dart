@@ -22,6 +22,11 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
   String _routineSearch = '';
   String? _selectedExerciseIdForVideo;
 
+  static const String _filterAllKey = '__all__';
+  static const String _filterUnassignedKey = '__unassigned__';
+  String _exerciseTypeFilter = _filterAllKey;
+  String _exerciseOwnerFilter = _filterAllKey;
+
   List<Map<String, dynamic>> _users = const [];
   List<Map<String, dynamic>> _exercises = const [];
   List<Map<String, dynamic>> _routines = const [];
@@ -225,6 +230,23 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
   Future<void> _copyText(String value) async {
     await Clipboard.setData(ClipboardData(text: value));
     _showSnack('Copiado al portapapeles');
+  }
+
+  String _userDisplayNameById(String userId) {
+    for (final user in _users) {
+      final id = user['id']?.toString();
+      if (id == userId) {
+        final username = user['username']?.toString();
+        if (username != null && username.trim().isNotEmpty) {
+          return username.trim();
+        }
+        final email = user['email']?.toString();
+        if (email != null && email.trim().isNotEmpty) {
+          return email.trim();
+        }
+      }
+    }
+    return userId;
   }
 
   Future<void> _runMutation({
@@ -980,9 +1002,138 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
   }
 
   Widget _buildExercises(ThemeData theme) {
+    final exerciseTypes = <String>{};
+    final ownerIds = <String>{};
+    var hasUnassignedOwner = false;
+
+    for (final exercise in _exercises) {
+      final rawType = exercise['category']?.toString();
+      final type = rawType?.trim();
+      if (type != null && type.isNotEmpty) {
+        exerciseTypes.add(type);
+      }
+
+      final rawOwnerId = exercise['owner_user_id']?.toString();
+      final ownerId = rawOwnerId?.trim() ?? '';
+      if (ownerId.isEmpty) {
+        hasUnassignedOwner = true;
+      } else {
+        ownerIds.add(ownerId);
+      }
+    }
+
+    final sortedTypes = exerciseTypes.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    final sortedOwnerIds = ownerIds.toList()..sort();
+
+    final filteredExercises = _exercises.where((exercise) {
+      final type = exercise['category']?.toString() ?? '';
+      if (_exerciseTypeFilter != _filterAllKey && type != _exerciseTypeFilter) {
+        return false;
+      }
+
+      final ownerId = exercise['owner_user_id']?.toString() ?? '';
+      if (_exerciseOwnerFilter != _filterAllKey) {
+        if (_exerciseOwnerFilter == _filterUnassignedKey) {
+          if (ownerId.isNotEmpty) return false;
+        } else {
+          if (ownerId != _exerciseOwnerFilter) return false;
+        }
+      }
+      return true;
+    }).toList();
+
+    final hasFilters = _exerciseTypeFilter != _filterAllKey ||
+        _exerciseOwnerFilter != _filterAllKey;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Row(
+          children: [
+            Expanded(
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Tipo',
+                  isDense: true,
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: _exerciseTypeFilter,
+                    items: [
+                      const DropdownMenuItem(
+                        value: _filterAllKey,
+                        child: Text('Todos'),
+                      ),
+                      ...sortedTypes.map(
+                        (type) => DropdownMenuItem(
+                          value: type,
+                          child: Text(type),
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _exerciseTypeFilter = value);
+                    },
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Propietario',
+                  isDense: true,
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: _exerciseOwnerFilter,
+                    items: [
+                      const DropdownMenuItem(
+                        value: _filterAllKey,
+                        child: Text('Todos'),
+                      ),
+                      if (hasUnassignedOwner)
+                        const DropdownMenuItem(
+                          value: _filterUnassignedKey,
+                          child: Text('Sin asignar'),
+                        ),
+                      ...sortedOwnerIds.map(
+                        (ownerId) => DropdownMenuItem(
+                          value: ownerId,
+                          child: Text(_userDisplayNameById(ownerId)),
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() => _exerciseOwnerFilter = value);
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (hasFilters)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, bottom: 2),
+            child: TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _exerciseTypeFilter = _filterAllKey;
+                  _exerciseOwnerFilter = _filterAllKey;
+                });
+              },
+              icon: const Icon(Icons.filter_alt_off_outlined),
+              label: const Text('Limpiar filtros'),
+            ),
+          ),
+        const SizedBox(height: 16),
         _SearchHeader(
           hintText: 'Buscar ejercicio por nombre',
           initialValue: _exerciseSearch,
@@ -992,99 +1143,141 @@ class _AdminShellScreenState extends ConsumerState<AdminShellScreen> {
           },
         ),
         const SizedBox(height: 16),
-        if (_exercises.isEmpty)
+        if (filteredExercises.isEmpty)
           const _EmptyState(message: 'No hay ejercicios que mostrar.'),
-        ..._exercises.map((exercise) {
-          final muscles = ((exercise['muscle_groups'] as List?) ?? const [])
-              .map((item) => item.toString())
-              .join(', ');
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            exercise['name']?.toString() ?? '',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
+        if (filteredExercises.isNotEmpty)
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: filteredExercises.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.78,
+            ),
+            itemBuilder: (context, index) {
+              final exercise = filteredExercises[index];
+              final muscles = ((exercise['muscle_groups'] as List?) ?? const [])
+                  .map((item) => item.toString())
+                  .join(', ');
+              final isActive = exercise['is_active'] == true;
+              final ownerId = exercise['owner_user_id']?.toString() ?? '';
+              final ownerLabel = ownerId.isEmpty
+                  ? 'Sin asignar'
+                  : _userDisplayNameById(ownerId);
+
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              exercise['name']?.toString() ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                           ),
-                        ),
-                        _StatusChip(
-                          label: exercise['is_active'] == true
-                              ? 'activo'
-                              : 'inactivo',
-                          color: exercise['is_active'] == true
-                              ? const Color(0xFFB5FF67)
-                              : const Color(0xFFE26B6B),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      exercise['description']?.toString() ?? 'Sin descripción',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white70,
+                          _StatusChip(
+                            label: isActive ? 'activo' : 'inactivo',
+                            color: isActive
+                                ? const Color(0xFFB5FF67)
+                                : const Color(0xFFE26B6B),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        _MiniMeta(
-                            label: 'Categoría',
-                            value: exercise['category']?.toString() ?? '-'),
-                        _MiniMeta(
+                      const SizedBox(height: 8),
+                      Text(
+                        exercise['description']?.toString() ??
+                            'Sin descripción',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.white70,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _MiniMeta(
+                            label: 'Tipo',
+                            value: exercise['category']?.toString() ?? '-',
+                          ),
+                          _MiniMeta(
                             label: 'Dificultad',
-                            value: exercise['difficulty']?.toString() ?? '-'),
-                        _MiniMeta(
-                            label: 'Músculos',
-                            value: muscles.isEmpty ? '-' : muscles),
-                        _MiniMeta(
-                          label: 'Duración',
-                          value: '${exercise['duration_seconds'] ?? '-'} s',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        OutlinedButton(
-                          onPressed: () =>
-                              _createOrEditExercise(exercise: exercise),
-                          child: const Text('Editar'),
-                        ),
-                        const SizedBox(width: 10),
-                        OutlinedButton(
-                          onPressed: () {
-                            setState(() {
-                              _selectedExerciseIdForVideo =
-                                  exercise['id']?.toString();
-                              _sectionIndex = 3;
-                            });
-                          },
-                          child: const Text('Vídeo'),
-                        ),
-                        const SizedBox(width: 10),
-                        TextButton(
-                          onPressed: () => _deleteExercise(exercise),
-                          child: const Text('Eliminar'),
-                        ),
-                      ],
-                    ),
-                  ],
+                            value: exercise['difficulty']?.toString() ?? '-',
+                          ),
+                          _MiniMeta(
+                            label: 'Propietario',
+                            value: ownerLabel,
+                          ),
+                          _MiniMeta(
+                            label: 'Duración',
+                            value:
+                                "${exercise['duration_seconds'] ?? '-'} s",
+                          ),
+                          if (muscles.isNotEmpty)
+                            _MiniMeta(
+                              label: 'Músculos',
+                              value: muscles.length > 20
+                                  ? '${muscles.substring(0, 20)}...'
+                                  : muscles,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 8,
+                        children: [
+                          OutlinedButton(
+                            onPressed: () =>
+                                _createOrEditExercise(exercise: exercise),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                            child: const Text('Editar'),
+                          ),
+                          OutlinedButton(
+                            onPressed: () {
+                              setState(() {
+                                _selectedExerciseIdForVideo =
+                                    exercise['id']?.toString();
+                                _sectionIndex = 3;
+                              });
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                            child: const Text('Vídeo'),
+                          ),
+                          TextButton(
+                            onPressed: () => _deleteExercise(exercise),
+                            child: const Text('Eliminar'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-          );
-        }),
+              );
+            },
+          ),
       ],
     );
   }

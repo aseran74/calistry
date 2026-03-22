@@ -18,14 +18,29 @@ class Routine {
   });
 
   factory Routine.fromJson(Map<String, dynamic> json) {
+    final id = json['id']?.toString() ?? '';
+    final userId = json['user_id']?.toString() ??
+        json['userId']?.toString() ??
+        json['owner_user_id']?.toString() ??
+        json['ownerUserId']?.toString() ??
+        '';
+    final name = json['name']?.toString() ?? 'Sin nombre';
+    final rawPublic = json['is_public'] ?? json['isPublic'];
+    final isPublic = rawPublic == true ||
+        rawPublic == 1 ||
+        rawPublic?.toString() == 'true';
+    final rawDesc = json['description'] ?? json['desc'];
+    final String? description = rawDesc == null
+        ? null
+        : (rawDesc is String ? rawDesc : rawDesc.toString());
     return Routine(
-      id: json['id'] as String,
-      userId: json['user_id'] as String,
-      name: json['name'] as String,
-      description: json['description'] as String?,
-      level: json['level'] as String? ?? 'principiante',
-      isPublic: json['is_public'] as bool? ?? false,
-      createdAt: json['created_at'] as String?,
+      id: id,
+      userId: userId,
+      name: name,
+      description: description,
+      level: json['level']?.toString() ?? 'principiante',
+      isPublic: isPublic,
+      createdAt: json['created_at']?.toString() ?? json['createdAt']?.toString(),
     );
   }
 }

@@ -54,6 +54,7 @@ class AdminApiClient {
   Future<List<Map<String, dynamic>>> listExercises({
     required String accessToken,
     String search = '',
+    String? category,
     String? ownerUserId,
   }) async {
     final params = <String, String>{
@@ -62,6 +63,9 @@ class AdminApiClient {
     };
     if (search.trim().isNotEmpty) {
       params['name'] = 'ilike.*${search.trim()}*';
+    }
+    if (category != null && category.isNotEmpty) {
+      params['category'] = 'eq.$category';
     }
     if (ownerUserId != null && ownerUserId.isNotEmpty) {
       params['owner_user_id'] = 'eq.$ownerUserId';

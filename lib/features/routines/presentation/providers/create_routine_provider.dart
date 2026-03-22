@@ -1,20 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:calistenia_app/core/api/api_providers.dart';
-import 'package:calistenia_app/features/exercises/domain/models/exercise.dart';
+import 'package:uuid/uuid.dart';
 import 'package:calistenia_app/features/routines/domain/models/routine_exercise_item.dart';
-import 'package:calistenia_app/features/routines/presentation/widgets/add_exercise_sheet.dart';
 
-/// Items para crear rutina: exerciseId + orderIndex + sets + reps + restSeconds.
-/// Puede tener exercise cargado para mostrar nombre/thumbnail.
-class CreateRoutineState {
-  final String name;
-  final String description;
-  final String level;
-  final bool isPublic;
-  final List<RoutineExerciseItem> items;
-
-  const CreateRoutineState({
+/// Estado del formulario "Nueva rutina" (solo borrador local hasta guardar en API).
+class CreateRoutineDraft {
+  const CreateRoutineDraft({
     this.name = '',
     this.description = '',
     this.level = 'principiante',
@@ -22,8 +12,14 @@ class CreateRoutineState {
     this.items = const [],
   });
 
+  final String name;
+  final String description;
+  final String level;
+  final bool isPublic;
+  final List<RoutineExerciseItem> items;
+
   int get estimatedSeconds {
-    int total = 0;
+    var total = 0;
     for (final item in items) {
       final duration = item.exercise?.durationSeconds ?? 45;
       final sets = item.sets ?? 3;
@@ -33,14 +29,16 @@ class CreateRoutineState {
     return total;
   }
 
-  CreateRoutineState copyWith({
+  bool get canSubmit => name.trim().isNotEmpty && items.isNotEmpty;
+
+  CreateRoutineDraft copyWith({
     String? name,
     String? description,
     String? level,
     bool? isPublic,
     List<RoutineExerciseItem>? items,
   }) {
-    return CreateRoutineState(
+    return CreateRoutineDraft(
       name: name ?? this.name,
       description: description ?? this.description,
       level: level ?? this.level,
@@ -50,49 +48,82 @@ class CreateRoutineState {
   }
 }
 
-class CreateRoutineNotifier extends StateNotifier<CreateRoutineState> {
-  CreateRoutineNotifier() : super(const CreateRoutineState());
+/// Lógica del borrador; sin dependencias de UI.
+class CreateRoutineNotifier extends Notifier<CreateRoutineDraft> {
+  static const _uuid = Uuid();
+
+  @override
+  CreateRoutineDraft build() => const CreateRoutineDraft();
+
+  void reset() => state = const CreateRoutineDraft();
 
   void setName(String v) => state = state.copyWith(name: v);
   void setDescription(String v) => state = state.copyWith(description: v);
   void setLevel(String v) => state = state.copyWith(level: v);
   void setPublic(bool v) => state = state.copyWith(isPublic: v);
 
-  void addItem(RoutineExerciseItem item) {
-    final items = List<RoutineExerciseItem>.from(state.items)
-      ..add(item.copyWith(orderIndex: state.items.length));
-    state = state.copyWith(items: items);
+  /// Añade ejercicio desde el sheet (asigna id estable único para claves de lista).
+  void addExercise(RoutineExerciseItem fromPicker) {
+    final id = _uuid.v4();
+    final next = List<RoutineExerciseItem>.from(state.items)
+      ..add(
+        fromPicker.copyWith(
+          id: id,
+          routineId: '',
+          orderIndex: state.items.length,
+        ),
+      );
+    state = state.copyWith(items: next);
   }
 
-  void reorder(int oldIndex, int newIndex) {
-    if (newIndex > oldIndex) newIndex--;
-    final items = List<RoutineExerciseItem>.from(state.items);
-    final moved = items.removeAt(oldIndex);
-    items.insert(newIndex, moved);
-    for (var i = 0; i < items.length; i++) {
-      items[i] = items[i].copyWith(orderIndex: i);
-    }
-    state = state.copyWith(items: items);
+  void removeAt(int index) {
+    if (index < 0 || index >= state.items.length) return;
+    final next = List<RoutineExerciseItem>.from(state.items)..removeAt(index);
+    state = state.copyWith(items: _withOrderIndex(next));
   }
 
-  void updateItem(int index, {int? sets, int? reps, int? restSeconds}) {
-    final items = List<RoutineExerciseItem>.from(state.items);
-    items[index] = items[index].copyWith(sets: sets, reps: reps, restSeconds: restSeconds);
-    state = state.copyWith(items: items);
+  void moveUp(int index) {
+    if (index <= 0 || index >= state.items.length) return;
+    final next = List<RoutineExerciseItem>.from(state.items);
+    final t = next[index - 1];
+    next[index - 1] = next[index];
+    next[index] = t;
+    state = state.copyWith(items: _withOrderIndex(next));
   }
 
-  void removeItem(int index) {
-    final items = List<RoutineExerciseItem>.from(state.items)..removeAt(index);
-    for (var i = 0; i < items.length; i++) {
-      items[i] = items[i].copyWith(orderIndex: i);
-    }
-    state = state.copyWith(items: items);
+  void moveDown(int index) {
+    if (index < 0 || index >= state.items.length - 1) return;
+    final next = List<RoutineExerciseItem>.from(state.items);
+    final t = next[index + 1];
+    next[index + 1] = next[index];
+    next[index] = t;
+    state = state.copyWith(items: _withOrderIndex(next));
   }
 
-  void clear() => state = const CreateRoutineState();
+  void updateItem(
+    int index, {
+    int? sets,
+    int? reps,
+    int? restSeconds,
+  }) {
+    if (index < 0 || index >= state.items.length) return;
+    final next = List<RoutineExerciseItem>.from(state.items);
+    next[index] = next[index].copyWith(
+      sets: sets,
+      reps: reps,
+      restSeconds: restSeconds,
+    );
+    state = state.copyWith(items: next);
+  }
+
+  List<RoutineExerciseItem> _withOrderIndex(List<RoutineExerciseItem> list) {
+    return [
+      for (var i = 0; i < list.length; i++) list[i].copyWith(orderIndex: i),
+    ];
+  }
 }
 
 final createRoutineProvider =
-    StateNotifierProvider<CreateRoutineNotifier, CreateRoutineState>((ref) {
-  return CreateRoutineNotifier();
-});
+    NotifierProvider<CreateRoutineNotifier, CreateRoutineDraft>(
+  CreateRoutineNotifier.new,
+);

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:calistenia_app/core/router/student_shell_routes.dart';
 import 'package:calistenia_app/features/admin/data/admin_api_client.dart';
 import 'package:calistenia_app/features/auth/presentation/providers/auth_controller.dart';
 import 'package:calistenia_app/core/utils/user_display_name.dart';
@@ -26,6 +27,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   String _routineSearch = '';
   String _submissionSearch = '';
   String _teacherApplicationSearch = '';
+  String? _exerciseTypeFilter;
   String? _exerciseOwnerUserIdFilter;
   String? _routineUserIdFilter;
   String? _selectedExerciseIdForMedia;
@@ -90,6 +92,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         api.listExercises(
           accessToken: session.accessToken,
           search: _exerciseSearch,
+          category: _exerciseTypeFilter,
           ownerUserId: _exerciseOwnerUserIdFilter,
         ),
       );
@@ -390,6 +393,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     controller.dispose();
     return result;
   }
+
 
   Future<void> _approveSubmission(Map<String, dynamic> submission) async {
     final session = ref.read(authControllerProvider).session;
@@ -709,6 +713,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     )
         ? exercise!['category'].toString()
         : exerciseCategories.first;
+    const customCategorySentinel = '__other__';
+    final bool isCustomCategory = !exerciseCategories.contains(
+      exercise?['category']?.toString(),
+    );
+    var useCustomCategory = isCustomCategory;
+    final customCategoryController = TextEditingController(
+      text: useCustomCategory ? category : '',
+    );
     var difficulty = exerciseDifficulties.contains(
       exercise?['difficulty']?.toString(),
     )
@@ -753,22 +765,53 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        initialValue: category,
+                        initialValue: useCustomCategory ? customCategorySentinel : category,
                         decoration:
                             const InputDecoration(labelText: 'Categoría'),
-                        items: exerciseCategories
+                        items: [
+                          ...exerciseCategories
                             .map(
                               (item) => DropdownMenuItem(
                                 value: item,
                                 child: Text(exerciseCategoryLabel(item)),
                               ),
-                            )
-                            .toList(),
+                            ),
+                          const DropdownMenuItem(
+                            value: customCategorySentinel,
+                            child: Text('Otro (escribe)'),
+                          ),
+                        ],
                         onChanged: (value) {
                           if (value == null) return;
-                          setLocalState(() => category = value);
+                          if (value == customCategorySentinel) {
+                            setLocalState(() {
+                              useCustomCategory = true;
+                              category = customCategoryController.text.trim().isEmpty
+                                  ? ''
+                                  : customCategoryController.text.trim();
+                            });
+                            return;
+                          }
+                          setLocalState(() {
+                            useCustomCategory = false;
+                            category = value;
+                            customCategoryController.text = '';
+                          });
                         },
                       ),
+                      if (useCustomCategory)
+                        const SizedBox(height: 12),
+                      if (useCustomCategory)
+                        TextField(
+                          controller: customCategoryController,
+                          decoration: const InputDecoration(
+                            labelText: 'Nueva categoría (escribe)',
+                          ),
+                          onChanged: (v) {
+                            final trimmed = v.trim();
+                            setLocalState(() => category = trimmed);
+                          },
+                        ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         initialValue: difficulty,
@@ -866,10 +909,19 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 ),
                 FilledButton(
                   onPressed: () {
+                    final resolvedCategory = category.trim();
+                    if (resolvedCategory.isEmpty) {
+                      _showSnack(
+                        'La categoría no puede estar vacía.',
+                        isError: true,
+                      );
+                      return;
+                    }
+
                     Navigator.of(context).pop({
                       'name': nameController.text.trim(),
                       'description': descController.text.trim(),
-                      'category': category,
+                      'category': resolvedCategory,
                       'difficulty': difficulty,
                       'muscle_groups': musclesController.text
                           .split(',')
@@ -909,6 +961,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     gifController.dispose();
     videoController.dispose();
     thumbnailController.dispose();
+    customCategoryController.dispose();
     return payload;
   }
 
@@ -1055,7 +1108,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     ),
                     const SizedBox(height: 16),
                     FilledButton(
-                      onPressed: () => context.go('/'),
+                      onPressed: () => context.go(StudentShellRoutes.home),
                       child: const Text('Ir a la app'),
                     ),
                   ],
@@ -1471,6 +1524,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   }
 
   Widget _buildExercises(ThemeData theme) {
+    final categories = <String>[
+      ...exerciseCategories,
+      if (_exerciseTypeFilter != null &&
+          _exerciseTypeFilter!.isNotEmpty &&
+          !exerciseCategories.contains(_exerciseTypeFilter))
+        _exerciseTypeFilter!,
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1483,27 +1544,63 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           },
         ),
         const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
-          initialValue: _exerciseOwnerUserIdFilter,
-          decoration: const InputDecoration(
-            labelText: 'Filtrar por propietario',
-          ),
-          items: [
-            const DropdownMenuItem<String>(
-              value: null,
-              child: Text('Todos los propietarios'),
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                initialValue: _exerciseTypeFilter,
+                decoration: const InputDecoration(
+                  labelText: 'Categoría',
+                ),
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('Todas las categorías'),
+                  ),
+                  ...categories.map(
+                    (type) => DropdownMenuItem<String>(
+                      value: type,
+                      child: Text(exerciseCategoryLabel(type)),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value == null) {
+                    setState(() => _exerciseTypeFilter = null);
+                    _reloadAll();
+                    return;
+                  }
+                  setState(() => _exerciseTypeFilter = value);
+                  _reloadAll();
+                },
+              ),
             ),
-            ..._users.map(
-              (user) => DropdownMenuItem<String>(
-                value: user['id']?.toString(),
-                child: Text(_userLabel(user['id']?.toString())),
+            const SizedBox(width: 16),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                initialValue: _exerciseOwnerUserIdFilter,
+                decoration: const InputDecoration(
+                  labelText: 'Propietario',
+                ),
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: null,
+                    child: Text('Todos los propietarios'),
+                  ),
+                  ..._users.map(
+                    (user) => DropdownMenuItem<String>(
+                      value: user['id']?.toString(),
+                      child: Text(_userLabel(user['id']?.toString())),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() => _exerciseOwnerUserIdFilter = value);
+                  _reloadAll();
+                },
               ),
             ),
           ],
-          onChanged: (value) {
-            setState(() => _exerciseOwnerUserIdFilter = value);
-            _reloadAll();
-          },
         ),
         const SizedBox(height: 16),
         Card(
@@ -1520,79 +1617,155 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         const SizedBox(height: 16),
         if (_exercises.isEmpty)
           const _EmptyState(message: 'No hay ejercicios que mostrar.'),
-        ..._exercises.map((exercise) {
-          final muscles = ((exercise['muscle_groups'] as List?) ?? const [])
-              .map((item) => item.toString())
-              .join(', ');
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Card(
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _exercises.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 4,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.74,
+          ),
+          itemBuilder: (context, index) {
+            final exercise = _exercises[index];
+            final muscles =
+                ((exercise['muscle_groups'] as List?) ?? const []).map((e) {
+              return e.toString();
+            }).join(', ');
+            final isActive = exercise['is_active'] == true;
+            final thumbUrl = exercise['thumbnail_url']?.toString() ?? '';
+            final gifUrl = exercise['gif_url']?.toString() ?? '';
+            final videoUrl = exercise['video_url']?.toString() ?? '';
+            final previewUrl = thumbUrl.isNotEmpty
+                ? thumbUrl
+                : (gifUrl.isNotEmpty ? gifUrl : (videoUrl.isNotEmpty ? videoUrl : ''));
+            return Card(
               child: Padding(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      exercise['name']?.toString() ?? '',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
+                    AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: previewUrl.isEmpty
+                            ? Container(
+                                color: theme.colorScheme.surfaceContainerHighest,
+                                alignment: Alignment.center,
+                                child: const Icon(Icons.image_not_supported_outlined),
+                              )
+                            : Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.network(
+                                    previewUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      color: theme.colorScheme.surfaceContainerHighest,
+                                      alignment: Alignment.center,
+                                      child: const Icon(Icons.broken_image_outlined),
+                                    ),
+                                  ),
+                                  if (videoUrl.isNotEmpty)
+                                    Align(
+                                      alignment: Alignment.center,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(5),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(alpha: 0.48),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.play_arrow_rounded,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    _StatusChip(
-                      label:
-                          exercise['is_active'] == true ? 'activo' : 'inactivo',
-                      color: exercise['is_active'] == true
-                          ? const Color(0xFF00FF87)
-                          : const Color(0xFFFF4444),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            exercise['name']?.toString() ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        _StatusChip(
+                          label: isActive ? 'activo' : 'inactivo',
+                          color: isActive
+                              ? const Color(0xFF00FF87)
+                              : const Color(0xFFFF4444),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Text(
                       exercise['description']?.toString() ?? 'Sin descripción',
-                      style: theme.textTheme.bodyMedium?.copyWith(
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
                         color: Colors.white70,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Categoría: ${exerciseCategoryLabel(exercise['category']?.toString() ?? '-')}',
-                      style: theme.textTheme.bodyMedium,
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _MiniMeta(
+                          label: 'Tipo',
+                          value: exerciseCategoryLabel(
+                              exercise['category']?.toString() ?? '-'),
+                        ),
+                        _MiniMeta(
+                          label: 'Dificultad',
+                          value: exerciseDifficultyLabel(
+                              exercise['difficulty']?.toString() ?? '-'),
+                        ),
+                        _MiniMeta(
+                          label: 'Prop.',
+                          value: _userLabel(
+                            exercise['owner_user_id']?.toString(),
+                          ),
+                        ),
+                        if (muscles.isNotEmpty)
+                          _MiniMeta(
+                            label: 'Músculos',
+                            value: muscles.length > 22
+                                ? '${muscles.substring(0, 22)}...'
+                                : muscles,
+                          ),
+                        _MiniMeta(
+                          label: 'Duración',
+                          value:
+                              "${exercise['duration_seconds'] ?? '-'} s",
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Dificultad: ${exerciseDifficultyLabel(exercise['difficulty']?.toString() ?? '-')}',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Propietario: ${_userLabel(exercise['owner_user_id']?.toString())}',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Músculos: ${muscles.isEmpty ? '-' : muscles}',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Duración: ${exercise['duration_seconds'] ?? '-'} s',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'GIF: ${(exercise['gif_url']?.toString() ?? '').isNotEmpty ? 'sí' : 'no'} | Vídeo: ${(exercise['video_url']?.toString() ?? '').isNotEmpty ? 'sí' : 'no'}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white70,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
+                    const Spacer(),
                     Wrap(
                       spacing: 10,
-                      runSpacing: 10,
+                      runSpacing: 6,
                       children: [
                         OutlinedButton(
                           onPressed: () =>
                               _createOrEditExercise(exercise: exercise),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                          ),
                           child: const Text('Editar'),
                         ),
                         OutlinedButton(
@@ -1603,10 +1776,20 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                               _sectionIndex = 3;
                             });
                           },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                          ),
                           child: const Text('Media'),
                         ),
                         TextButton(
                           onPressed: () => _deleteExercise(exercise),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            foregroundColor: Colors.white70,
+                          ),
                           child: const Text('Eliminar'),
                         ),
                       ],
@@ -1614,9 +1797,9 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                   ],
                 ),
               ),
-            ),
-          );
-        }),
+            );
+          },
+        ),
       ],
     );
   }

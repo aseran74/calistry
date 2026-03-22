@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:calistenia_app/core/router/student_shell_routes.dart';
+import 'package:calistenia_app/core/shell/student_shell_layout.dart';
 import 'package:calistenia_app/core/api/api_providers.dart';
 import 'package:calistenia_app/features/auth/presentation/providers/auth_controller.dart';
 import 'package:calistenia_app/features/exercises/domain/exercise_metadata.dart';
@@ -397,7 +399,12 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
             ),
             exercisesState.when(
               loading: () => SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  0,
+                  16,
+                  StudentShellLayout.bodyBottomPadding(context),
+                ),
                 sliver: SliverGrid(
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 220,
@@ -455,7 +462,12 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                   );
                 }
                 return SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                  padding: EdgeInsets.fromLTRB(
+                  16,
+                  0,
+                  16,
+                  StudentShellLayout.bodyBottomPadding(context),
+                ),
                   sliver: SliverGrid(
                     gridDelegate:
                         const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -474,7 +486,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                         return ExerciseCard(
                           exercise: exercise,
                           onTap: () => context.push(
-                            '/exercises/${exercise.id}',
+                            StudentShellRoutes.exerciseDetail(exercise.id),
                             extra: exercise,
                           ),
                         );

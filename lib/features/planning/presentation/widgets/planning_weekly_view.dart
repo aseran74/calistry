@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:calistenia_app/core/api/api_providers.dart';
 import 'package:calistenia_app/features/planning/domain/planning_slot.dart';
 import 'package:calistenia_app/features/planning/presentation/providers/planning_provider.dart';
 import 'package:calistenia_app/features/routines/domain/models/routine.dart';
@@ -49,7 +50,9 @@ class PlanningWeeklyView extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Toca una celda para añadir rutinas. Puedes asignar varias rutinas a la misma hora.',
+              'Los bloques con rutina se resaltan (color y borde). '
+              'En Rutinas, icono de repetición, o el FAB «Horario semanal», eliges lunes/martes/… y la hora. '
+              'También puedes tocar una celda vacía. «Hecha hoy» está en el menú de cada hueco.',
               style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
@@ -185,18 +188,58 @@ class PlanningWeeklyView extends ConsumerWidget {
               ),
             ),
             const Divider(height: 1),
-            ...cellSlots.map((slot) => ListTile(
-              leading: const Icon(Icons.fitness_center),
-              title: Text(slot.routineName),
-              subtitle: const Text('Toca para quitar'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                notifier.removeSlot(slot);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${slot.routineName} quitada del planning')),
-                );
-              },
-            )),
+            ...cellSlots.map((slot) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.fitness_center),
+                        title: Text(
+                          slot.routineName,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: Text(
+                          'Hoy puedes registrar la sesión; en la columna del día actual verás ✓ si ya consta hecha.',
+                          style: Theme.of(sheetContext).textTheme.bodySmall,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.check_circle_outline, size: 20),
+                              label: const Text('Hecha hoy'),
+                              onPressed: () async {
+                                Navigator.of(sheetContext).pop();
+                                await _markSlotDone(context, ref, slot: slot);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.delete_outline, size: 20),
+                              label: const Text('Quitar'),
+                              onPressed: () {
+                                Navigator.of(sheetContext).pop();
+                                notifier.removeSlot(slot);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '${slot.routineName} quitada del planning',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                )),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.add_circle_outline),
@@ -221,6 +264,32 @@ class PlanningWeeklyView extends ConsumerWidget {
     );
   }
 
+  Future<void> _markSlotDone(
+    BuildContext context,
+    WidgetRef ref, {
+    required PlanningSlot slot,
+  }) async {
+    try {
+      await ref.read(apiClientProvider).saveProgress(
+            routineId: slot.routineId,
+            durationSeconds: null,
+            notes: null,
+          );
+      ref.invalidate(userProgressListProvider);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('«${slot.routineName}» registrada para hoy'),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
   void _showRoutinePicker(
     BuildContext context,
     WidgetRef ref, {
@@ -231,8 +300,11 @@ class PlanningWeeklyView extends ConsumerWidget {
     required AsyncValue<List<Map<String, dynamic>>> assignedAsync,
     required PlanningSlotsNotifier notifier,
   }) {
-    final List<({String id, String name})> options = [];
-    routinesAsync.valueOrNull?.forEach((r) => options.add((id: r.id, name: r.name)));
+    final mine = <({String id, String name})>[];
+    routinesAsync.valueOrNull
+        ?.forEach((r) => mine.add((id: r.id, name: r.name)));
+
+    final assigned = <({String id, String name})>[];
     assignedAsync.valueOrNull?.forEach((item) {
       final rawRoutine = item['routine'];
       final Map<String, dynamic>? r = rawRoutine is Map<String, dynamic>
@@ -245,16 +317,19 @@ class PlanningWeeklyView extends ConsumerWidget {
       if (r == null) return;
       final id = r['id']?.toString() ?? '';
       final name = r['name']?.toString() ?? 'Rutina';
-      if (id.isNotEmpty && !options.any((o) => o.id == id)) {
-        options.add((id: id, name: name));
+      if (id.isEmpty) return;
+      if (mine.any((o) => o.id == id) || assigned.any((o) => o.id == id)) {
+        return;
       }
+      assigned.add((id: id, name: name));
     });
 
-    if (options.isEmpty) {
+    if (mine.isEmpty && assigned.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'No tienes rutinas. Crea una en Rutinas o espera una asignada por tu profesor.',
+            'No tienes rutinas. Crea una en Rutinas o acepta una asignada por tu profesor. '
+            'También puedes usar «Planificar rutina» arriba.',
           ),
         ),
       );
@@ -263,38 +338,78 @@ class PlanningWeeklyView extends ConsumerWidget {
 
     showModalBottomSheet<void>(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                '${_dayName(day)} ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        void pick(({String id, String name}) o) {
+          Navigator.of(ctx).pop();
+          notifier.addSlot(PlanningSlot(
+            dayOfWeek: day,
+            hour: hour,
+            minute: minute,
+            routineId: o.id,
+            routineName: o.name,
+          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${o.name} asignada')),
+          );
+        }
+
+        return SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    '${_dayName(day)} ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
+                    style: Theme.of(ctx).textTheme.titleLarge,
+                  ),
+                ),
+                if (mine.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Text(
+                      'Mis rutinas',
+                      style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
+                            color: Theme.of(ctx).colorScheme.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                  ),
+                  ...mine.map(
+                    (o) => ListTile(
+                      leading: const Icon(Icons.person_outline),
+                      title: Text(o.name),
+                      onTap: () => pick(o),
+                    ),
+                  ),
+                ],
+                if (assigned.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: Text(
+                      'Asignadas por mi profesor',
+                      style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
+                            color: Theme.of(ctx).colorScheme.tertiary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                  ),
+                  ...assigned.map(
+                    (o) => ListTile(
+                      leading: const Icon(Icons.school_outlined),
+                      title: Text(o.name),
+                      onTap: () => pick(o),
+                    ),
+                  ),
+                ],
+              ],
             ),
-            const Divider(height: 1),
-            ...options.map((o) => ListTile(
-              leading: const Icon(Icons.fitness_center),
-              title: Text(o.name),
-              onTap: () {
-                Navigator.of(context).pop();
-                notifier.addSlot(PlanningSlot(
-                  dayOfWeek: day,
-                  hour: hour,
-                  minute: minute,
-                  routineId: o.id,
-                  routineName: o.name,
-                ));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${o.name} asignada')),
-                );
-              },
-            )),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -324,10 +439,17 @@ class _WeeklyCell extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
+        constraints: const BoxConstraints(minHeight: 52),
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
         decoration: BoxDecoration(
           color: hasSlots
-              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
+              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.82)
+              : null,
+          border: hasSlots
+              ? Border.all(
+                  color: theme.colorScheme.primary,
+                  width: 2,
+                )
               : null,
         ),
         child: hasSlots

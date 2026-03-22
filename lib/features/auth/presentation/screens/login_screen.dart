@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:calistenia_app/features/auth/presentation/providers/auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -158,6 +160,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.error,
                         ),
+                      ),
+                    ],
+                    if (kIsWeb) ...[
+                      const SizedBox(height: 20),
+                      TextButton.icon(
+                        onPressed: () => context.go('/welcome'),
+                        icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                        label: const Text('Volver a la portada'),
                       ),
                     ],
                   ],

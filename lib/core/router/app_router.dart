@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +12,7 @@ import 'package:calistenia_app/features/exercises/presentation/screens/exercises
 import 'package:calistenia_app/features/home/presentation/screens/home_screen.dart';
 import 'package:calistenia_app/features/live_classes/presentation/screens/live_class_room_screen.dart';
 import 'package:calistenia_app/features/live_classes/presentation/screens/live_classes_screen.dart';
+import 'package:calistenia_app/features/marketing/presentation/screens/landing_screen.dart';
 import 'package:calistenia_app/features/messages/presentation/screens/chat_screen.dart';
 import 'package:calistenia_app/features/messages/presentation/screens/messages_screen.dart';
 import 'package:calistenia_app/features/profile/presentation/screens/profile_screen.dart';
@@ -31,6 +32,7 @@ import 'package:calistenia_app/features/teachers/presentation/screens/teacher_pr
 import 'package:calistenia_app/features/teachers/presentation/screens/teacher_groups_screen.dart';
 import 'package:calistenia_app/features/teachers/presentation/screens/teacher_group_detail_screen.dart';
 import 'package:calistenia_app/features/teachers/presentation/screens/teacher_students_screen.dart';
+import 'package:calistenia_app/features/teachers/presentation/screens/teacher_exercises_screen.dart';
 import 'package:calistenia_app/features/teachers/presentation/screens/teachers_screen.dart';
 import 'package:calistenia_app/features/messages/presentation/screens/group_chat_screen.dart';
 
@@ -38,7 +40,18 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorHomeKey = GlobalKey<NavigatorState>();
 final _shellNavigatorExercisesKey = GlobalKey<NavigatorState>();
 final _shellNavigatorRoutinesKey = GlobalKey<NavigatorState>();
+final _shellNavigatorPlanningKey = GlobalKey<NavigatorState>();
 final _shellNavigatorProfileKey = GlobalKey<NavigatorState>();
+
+/// Ruta estable de la landing en web (evita `matchedLocation` vacío en `/`).
+const String kLandingPath = '/welcome';
+
+String _routerLocation(GoRouterState state) {
+  var loc = state.matchedLocation;
+  if (loc.isEmpty) loc = state.uri.path;
+  if (loc.isEmpty && kIsWeb) loc = '/';
+  return loc;
+}
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.read(authControllerProvider);
@@ -47,13 +60,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/auth-loading',
     navigatorKey: _rootNavigatorKey,
     refreshListenable: auth,
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'No se encontró la ruta.\n${state.uri}\n${state.error}',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ),
+      ),
+    ),
     redirect: (context, state) {
-      final location = state.matchedLocation;
+      final location = _routerLocation(state);
       final isLogin = location == '/login';
       final isLoading = location == '/auth-loading';
       final isAdminRoute = location == '/admin';
       final isTeacherDashboardRoute = location == '/teacher';
       final isTeacherWorkspaceRoute = isTeacherDashboardRoute ||
+          location == '/teacher-exercises' ||
           location == '/teacher-students' ||
           location == '/teachers' ||
           location.startsWith('/teachers/') ||
@@ -64,20 +90,40 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           location.startsWith('/messages/') ||
           location == '/live-classes' ||
           location.startsWith('/live-classes/') ||
-          location == '/routines' ||
-          location.startsWith('/routines/');
+          location == '/user/routines' ||
+          location.startsWith('/user/routines/');
       final isAuthenticated = auth.isAuthenticated;
+      final isWelcome = location == kLandingPath;
 
       if (auth.status == AuthStatus.loading) {
         return isLoading ? null : '/auth-loading';
       }
 
       if (!isAuthenticated) {
-        return isLogin ? null : '/login';
+        if (kIsWeb && isWelcome) return null;
+        if (isLogin) return null;
+        if (isLoading) return kIsWeb ? kLandingPath : '/login';
+        if (kIsWeb && (location == '/' || location.isEmpty)) {
+          return kLandingPath;
+        }
+        return '/login';
+      }
+
+      if (isAuthenticated && isWelcome) {
+        if (auth.isAdmin) return '/admin';
+        if (auth.isTeacher) return '/teacher';
+        return '/user';
+      }
+
+      if (isAuthenticated && (location == '/' || location.isEmpty)) {
+        if (auth.isAdmin) return '/admin';
+        if (auth.isTeacher) return '/teacher';
+        return '/user';
       }
 
       if (isAdminRoute && !auth.isAdmin) {
-        return '/';
+        if (auth.isTeacher) return '/teacher';
+        return '/user';
       }
 
       // En web, un admin debe aterrizar siempre en su dashboard dedicado,
@@ -95,13 +141,44 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/teacher';
       }
 
+      // Alumno / usuario: inicio y pestañas bajo /user (compat: redirige rutas antiguas).
+      final isStudent = auth.isAuthenticated &&
+          !auth.isAdmin &&
+          !auth.isTeacher;
+      if (isStudent) {
+        if (location == '/exercises' || location.startsWith('/exercises/')) {
+          return location == '/exercises'
+              ? '/user/exercises'
+              : '/user$location';
+        }
+        if (location == '/routines' || location.startsWith('/routines/')) {
+          return '/user$location';
+        }
+        if (location == '/planning') return '/user/planning';
+        if (location == '/profile') return '/user/profile';
+      }
+
       if (isLogin || isLoading) {
-        return '/';
+        if (auth.isAdmin) return '/admin';
+        if (auth.isTeacher) return '/teacher';
+        return '/user';
       }
 
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/',
+        redirect: (context, state) {
+          if (kIsWeb) return kLandingPath;
+          return '/login';
+        },
+      ),
+      GoRoute(
+        path: kLandingPath,
+        name: 'landing',
+        builder: (context, state) => const LandingScreen(),
+      ),
       GoRoute(
         path: '/auth-loading',
         name: 'auth-loading',
@@ -127,7 +204,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             navigatorKey: _shellNavigatorHomeKey,
             routes: [
               GoRoute(
-                path: '/',
+                path: '/user',
                 name: 'home',
                 pageBuilder: (context, state) => const NoTransitionPage(
                   child: HomeScreen(),
@@ -139,7 +216,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             navigatorKey: _shellNavigatorExercisesKey,
             routes: [
               GoRoute(
-                path: '/exercises',
+                path: '/user/exercises',
                 name: 'exercises',
                 pageBuilder: (context, state) => const NoTransitionPage(
                   child: ExercisesScreen(),
@@ -162,7 +239,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             navigatorKey: _shellNavigatorRoutinesKey,
             routes: [
               GoRoute(
-                path: '/routines',
+                path: '/user/routines',
                 name: 'routines',
                 pageBuilder: (context, state) => const NoTransitionPage(
                   child: RoutinesScreen(),
@@ -188,10 +265,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
           StatefulShellBranch(
+            navigatorKey: _shellNavigatorPlanningKey,
+            routes: [
+              GoRoute(
+                path: '/user/planning',
+                name: 'planning',
+                pageBuilder: (context, state) => const NoTransitionPage(
+                  child: PlanningScreen(),
+                ),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
             navigatorKey: _shellNavigatorProfileKey,
             routes: [
               GoRoute(
-                path: '/profile',
+                path: '/user/profile',
                 name: 'profile',
                 pageBuilder: (context, state) => const NoTransitionPage(
                   child: ProfileScreen(),
@@ -200,12 +289,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
-      ),
-      GoRoute(
-        path: '/planning',
-        name: 'planning',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const PlanningScreen(),
       ),
       GoRoute(
         path: '/progress',
@@ -262,6 +345,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'teacher-dashboard',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const TeacherDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/teacher-exercises',
+        name: 'teacher-exercises',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const TeacherExercisesScreen(),
       ),
       GoRoute(
         path: '/teacher-students',

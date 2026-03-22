@@ -199,6 +199,35 @@ class InsforgeAuthApi {
         .toString();
   }
 
+  /// Mensaje legible cuando en web falla la red (URL mala, CORS, DNS, etc.).
+  String _networkFailureHint({String? technicalDetail}) {
+    const base = ApiConfig.baseUrl;
+    final buf = StringBuffer(
+      'No se pudo conectar con el backend.\n'
+      'URL configurada: $base\n',
+    );
+    final lower = base.toLowerCase();
+    if (lower.contains('tu.instorga') ||
+        lower.contains('tu.insforge') ||
+        lower.contains('ejemplo') ||
+        lower.contains('placeholder')) {
+      buf.write(
+        'Parece una URL de ejemplo: debes usar la URL real de tu proyecto en '
+        'Insforge (termina en *.insforge.app, con "insforge", no "instorga"). '
+        'Pásala con --dart-define=API_BASE_URL=...\n',
+      );
+    }
+    buf.write(
+      'En Flutter Web, "Failed to fetch" suele ser: (1) API_BASE_URL incorrecta, '
+      '(2) CORS: en el panel de Insforge permite el origen de localhost, '
+      '(3) anon key faltante si tu API la exige.\n',
+    );
+    if (technicalDetail != null && technicalDetail.isNotEmpty) {
+      buf.write('Detalle: $technicalDetail');
+    }
+    return buf.toString().trim();
+  }
+
   Future<String> _fetchGoogleAuthUrl(
     String codeChallenge, {
     required String redirectUri,
@@ -210,7 +239,12 @@ class InsforgeAuthApi {
       },
     );
 
-    final response = await http.get(uri, headers: _headers);
+    late final http.Response response;
+    try {
+      response = await http.get(uri, headers: _headers);
+    } on http.ClientException catch (e) {
+      throw Exception(_networkFailureHint(technicalDetail: e.message));
+    }
     final data = _parseJson(response);
     final authUrl = data['authUrl'] as String?;
     if (response.statusCode >= 400 || authUrl == null || authUrl.isEmpty) {

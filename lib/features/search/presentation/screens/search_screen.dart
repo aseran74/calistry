@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:calistenia_app/core/router/student_shell_routes.dart';
 import 'package:calistenia_app/core/api/api_providers.dart';
 import 'package:calistenia_app/features/exercises/domain/models/exercise.dart';
 import 'package:calistenia_app/features/exercises/presentation/widgets/exercise_card.dart';
@@ -161,11 +162,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   exercises: _exercises,
                   routines: _routines,
                   onExerciseTap: (ex) => context.push(
-                    '/exercises/${ex.id}',
+                    StudentShellRoutes.exerciseDetail(ex.id),
                     extra: ex,
                   ),
                   onRoutineTap: (r) => context.push(
-                    '/routines/${r.id}/play',
+                    StudentShellRoutes.routinePlay(r.id),
                     extra: r,
                   ),
                 ),

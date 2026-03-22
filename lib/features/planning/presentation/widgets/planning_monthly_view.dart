@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:calistenia_app/core/router/student_shell_routes.dart';
 import 'package:calistenia_app/features/planning/domain/planning_slot.dart';
 import 'package:calistenia_app/features/planning/presentation/providers/planning_provider.dart';
 
@@ -106,7 +107,7 @@ class _PlanningMonthlyViewState extends ConsumerState<PlanningMonthlyView> {
                         day: day,
                         slots: daySlots,
                         onSlotTap: (slot) => context.push(
-                          '/routines/${slot.routineId}/play',
+                          StudentShellRoutes.routinePlay(slot.routineId),
                         ),
                       );
                     }),
