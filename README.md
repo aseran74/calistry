@@ -11,7 +11,7 @@ Ahí es donde debes abrir el workspace en el IDE y donde arrancas **la app princ
 
 Desde **`C:\Proyectos\Caliosteniaflutter`** puedes levantar **la misma app** en Chrome.
 
-- **Portada (solo web):** ruta **`/welcome`** (y **`/`** redirige ahí). Landing pública con enlaces a **Entrar** (`/login`). Tras comprobar la sesión, si no hay usuario en web se redirige a **`/welcome`** en lugar de ir directo al login.
+- **Portada (solo web):** ruta **`/welcome`**. En el navegador verás **`#/welcome`** (estrategia **hash**), igual que en `flutter run -d chrome`; en **Vercel** la URL por defecto queda así y no hace falta rewrite por ruta. **`/`** redirige a la landing. Mientras hidrata la sesión puedes quedarte en la portada (no obliga a pasar solo por `/auth-loading`). Landing con enlaces a **Entrar** (`/login`).
 - **Login:** `/login`
 - Tras iniciar sesión, el destino depende del **rol** en la tabla `users` (el rol se hidrata en login, ver `hydrateSessionRole`):
 

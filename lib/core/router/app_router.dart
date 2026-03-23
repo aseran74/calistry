@@ -57,7 +57,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.read(authControllerProvider);
 
   return GoRouter(
-    initialLocation: '/auth-loading',
+    // Web: abrir directamente la portada (p. ej. https://…vercel.app/#/welcome).
+    initialLocation: kIsWeb ? kLandingPath : '/auth-loading',
     navigatorKey: _rootNavigatorKey,
     refreshListenable: auth,
     errorBuilder: (context, state) => Scaffold(
@@ -96,7 +97,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isWelcome = location == kLandingPath;
 
       if (auth.status == AuthStatus.loading) {
-        return isLoading ? null : '/auth-loading';
+        if (isLoading) return null;
+        // Misma URL que en local: la landing puede mostrarse mientras hidrata la sesión.
+        if (kIsWeb && isWelcome) return null;
+        return '/auth-loading';
       }
 
       if (!isAuthenticated) {
