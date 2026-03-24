@@ -170,7 +170,7 @@ class _LogoMark extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: Image.asset(
-        'assets/branding/calistry_logo_full.png',
+        'logo/Calistry.logo.jpg',
         height: 62,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => Text(
@@ -430,9 +430,14 @@ class _HeroActions extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.asset(
-              'assets/branding/google_play_badge.png',
+              'logo/Google.png',
               height: isNarrow ? 48 : 56,
               fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Image.asset(
+                'assets/branding/google_play_badge.png',
+                height: isNarrow ? 48 : 56,
+                fit: BoxFit.contain,
+              ),
             ),
           ),
         ),

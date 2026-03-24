@@ -12,7 +12,7 @@ class AuthLoadingScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(
-              'assets/branding/calistry_logo_full.png',
+              'logo/Calistry.logo.jpg',
               width: 180,
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => Container(
