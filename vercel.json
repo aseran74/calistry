@@ -1,5 +1,6 @@
 {
+  "installCommand": "git clone https://github.com/flutter/flutter.git --depth 1 -b stable .flutter",
   "outputDirectory": "build/web",
-  "buildCommand": "flutter pub get && flutter build web --release"
+  "buildCommand": "chmod +x ./.flutter/bin/flutter && ./.flutter/bin/flutter --version && ./.flutter/bin/flutter config --enable-web && ./.flutter/bin/flutter pub get && ./.flutter/bin/flutter build web --release"
 }
 
