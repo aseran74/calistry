@@ -365,54 +365,74 @@ class _HeroActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isNarrow = MediaQuery.sizeOf(context).width < 520;
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        FilledButton(
-          style: FilledButton.styleFrom(
-            backgroundColor: LandingScreen._accent,
-            foregroundColor: const Color(0xFF04210F),
-            padding: EdgeInsets.symmetric(
-              horizontal: isNarrow ? 20 : 28,
-              vertical: 16,
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: LandingScreen._accent,
+                foregroundColor: const Color(0xFF04210F),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isNarrow ? 20 : 28,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onPressed: () => context.go('/login'),
+              child: Text(
+                'Crear cuenta / Entrar',
+                style: _landingStyle(
+                  context,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF04210F),
+                ),
+              ),
             ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white.withValues(alpha: 0.85),
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isNarrow ? 18 : 24,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onPressed: onScrollToFeatures,
+              child: Text(
+                'Ver qué incluye',
+                style: _landingStyle(
+                  context,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.85),
+                ),
+              ),
             ),
-          ),
-          onPressed: () => context.go('/login'),
-          child: Text(
-            'Crear cuenta / Entrar',
-            style: _landingStyle(
-              context,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF04210F),
-            ),
-          ),
+          ],
         ),
-        OutlinedButton(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.white.withValues(alpha: 0.85),
-            side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
-            padding: EdgeInsets.symmetric(
-              horizontal: isNarrow ? 18 : 24,
-              vertical: 16,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-          onPressed: onScrollToFeatures,
-          child: Text(
-            'Ver qué incluye',
-            style: _landingStyle(
-              context,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withValues(alpha: 0.85),
+        const SizedBox(height: 14),
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () {
+            // TODO: vincular con la URL oficial de Play Store cuando esté publicada.
+          },
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/branding/google_play_badge.png',
+              height: isNarrow ? 48 : 56,
+              fit: BoxFit.contain,
             ),
           ),
         ),
