@@ -167,61 +167,22 @@ class _LandingNav extends StatelessWidget {
 class _LogoMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF2A2A2A), LandingScreen._accentDim],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: LandingScreen._accent.withValues(alpha: 0.22),
-                blurRadius: 18,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.bolt_rounded,
-            color: LandingScreen._accent,
-            size: 24,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Image.asset(
+        'assets/branding/calistry_logo_full.png',
+        height: 62,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Text(
+          'Calistry',
+          style: _landingStyle(
+            context,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
           ),
         ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Calistry',
-              style: _landingStyle(
-                context,
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-                height: 1.05,
-              ),
-            ),
-            Text(
-              'Entrena con método',
-              style: _landingStyle(
-                context,
-                fontSize: 11,
-                letterSpacing: 0.6,
-                color: Colors.white.withValues(alpha: 0.45),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ],
+      ),
     );
   }
 }
