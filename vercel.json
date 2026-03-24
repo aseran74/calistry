@@ -1,5 +1,5 @@
 {
   "outputDirectory": "build/web",
-  "buildCommand": "echo \"Using local Flutter web build\""
+  "buildCommand": "flutter pub get && flutter build web --release"
 }
 
