@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:calistenia_app/core/api/api_providers.dart';
 import 'package:calistenia_app/features/routines/domain/models/routine_exercise_item.dart';
@@ -225,7 +226,7 @@ class _CreateRoutineScreenState extends ConsumerState<CreateRoutineScreen> {
   }
 }
 
-class _DraftExerciseCard extends StatelessWidget {
+class _DraftExerciseCard extends StatefulWidget {
   const _DraftExerciseCard({
     super.key,
     required this.item,
@@ -246,9 +247,35 @@ class _DraftExerciseCard extends StatelessWidget {
   final void Function(int? sets, int? reps, int? restSeconds) onUpdate;
 
   @override
+  State<_DraftExerciseCard> createState() => _DraftExerciseCardState();
+}
+
+class _DraftExerciseCardState extends State<_DraftExerciseCard> {
+  Timer? _overlayTimer;
+  bool _showPrescriptionOverlay = false;
+
+  @override
+  void dispose() {
+    _overlayTimer?.cancel();
+    super.dispose();
+  }
+
+  void _showOverlayForTwoSeconds() {
+    _overlayTimer?.cancel();
+    setState(() => _showPrescriptionOverlay = true);
+    _overlayTimer = Timer(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      setState(() => _showPrescriptionOverlay = false);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final name = item.exercise?.name ?? 'Ejercicio';
     final thumb = item.exercise?.imageUrl ?? '';
+    final prescription =
+        '${item.sets ?? 0} x ${item.reps ?? 0}';
 
     return Card(
       child: Padding(
@@ -264,12 +291,14 @@ class _DraftExerciseCard extends StatelessWidget {
                   children: [
                     IconButton(
                       tooltip: 'Subir',
-                      onPressed: index > 0 ? onMoveUp : null,
+                      onPressed: widget.index > 0 ? widget.onMoveUp : null,
                       icon: const Icon(Icons.arrow_upward),
                     ),
                     IconButton(
                       tooltip: 'Bajar',
-                      onPressed: index < lastIndex ? onMoveDown : null,
+                      onPressed: widget.index < widget.lastIndex
+                          ? widget.onMoveDown
+                          : null,
                       icon: const Icon(Icons.arrow_downward),
                     ),
                   ],
@@ -277,11 +306,32 @@ class _DraftExerciseCard extends StatelessWidget {
                 if (thumb.isNotEmpty)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: CachedNetworkImage(
-                      imageUrl: thumb,
-                      width: 56,
-                      height: 56,
-                      fit: BoxFit.cover,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CachedNetworkImage(
+                          imageUrl: thumb,
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                        ),
+                        if (_showPrescriptionOverlay)
+                          Container(
+                            width: 56,
+                            height: 56,
+                            color: Colors.black.withValues(alpha: 0.55),
+                            alignment: Alignment.center,
+                            child: Text(
+                              prescription,
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                      ],
                     ),
                   )
                 else
@@ -299,7 +349,7 @@ class _DraftExerciseCard extends StatelessWidget {
                 ),
                 IconButton(
                   tooltip: 'Quitar',
-                  onPressed: onRemove,
+                  onPressed: widget.onRemove,
                   icon: const Icon(Icons.close),
                 ),
               ],
@@ -317,8 +367,14 @@ class _DraftExerciseCard extends StatelessWidget {
                       isDense: true,
                     ),
                     keyboardType: TextInputType.number,
-                    onChanged: (v) =>
-                        onUpdate(int.tryParse(v), item.reps, item.restSeconds),
+                    onChanged: (v) {
+                      widget.onUpdate(
+                        int.tryParse(v),
+                        item.reps,
+                        item.restSeconds,
+                      );
+                      _showOverlayForTwoSeconds();
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -332,8 +388,14 @@ class _DraftExerciseCard extends StatelessWidget {
                       isDense: true,
                     ),
                     keyboardType: TextInputType.number,
-                    onChanged: (v) =>
-                        onUpdate(item.sets, int.tryParse(v), item.restSeconds),
+                    onChanged: (v) {
+                      widget.onUpdate(
+                        item.sets,
+                        int.tryParse(v),
+                        item.restSeconds,
+                      );
+                      _showOverlayForTwoSeconds();
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -347,8 +409,11 @@ class _DraftExerciseCard extends StatelessWidget {
                       isDense: true,
                     ),
                     keyboardType: TextInputType.number,
-                    onChanged: (v) =>
-                        onUpdate(item.sets, item.reps, int.tryParse(v)),
+                    onChanged: (v) => widget.onUpdate(
+                      item.sets,
+                      item.reps,
+                      int.tryParse(v),
+                    ),
                   ),
                 ),
               ],

@@ -2,7 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:calistenia_app/features/routines/presentation/providers/routines_provider.dart';
-import 'package:calistenia_app/core/api/api_providers.dart';
+import 'package:calistenia_app/features/routines/domain/models/routine_exercise_item.dart';
+import 'package:calistenia_app/features/exercises/presentation/widgets/exercise_video_player.dart';
 
 class RoutinePlayerScreen extends ConsumerStatefulWidget {
   const RoutinePlayerScreen({super.key, required this.routineId});
@@ -17,11 +18,27 @@ class _RoutinePlayerScreenState extends ConsumerState<RoutinePlayerScreen> {
   bool _isResting = false;
   int _restSecondsLeft = 0;
   Timer? _timer;
+  Timer? _mediaOverlayTimer;
+  bool _showMediaPrescription = false;
+  String? _lastOverlayItemId;
 
   @override
   void dispose() {
     _timer?.cancel();
+    _mediaOverlayTimer?.cancel();
     super.dispose();
+  }
+
+  void _showMediaPrescriptionFor(RoutineExerciseItem item) {
+    _mediaOverlayTimer?.cancel();
+    setState(() {
+      _showMediaPrescription = true;
+      _lastOverlayItemId = item.id;
+    });
+    _mediaOverlayTimer = Timer(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      setState(() => _showMediaPrescription = false);
+    });
   }
 
   void _startRest(int seconds) {
@@ -65,6 +82,12 @@ class _RoutinePlayerScreenState extends ConsumerState<RoutinePlayerScreen> {
 
           final item = exercises[_currentIndex];
           final exercise = item.exercise;
+          if (_lastOverlayItemId != item.id) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              _showMediaPrescriptionFor(item);
+            });
+          }
 
           return Column(
             children: [
@@ -83,11 +106,60 @@ class _RoutinePlayerScreenState extends ConsumerState<RoutinePlayerScreen> {
                     color: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  child: Center(
-                    child: (exercise?.gifUrl != null && exercise!.gifUrl!.isNotEmpty)
-                        ? Image.network(exercise.gifUrl!, fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => Icon(Icons.fitness_center, size: 80, color: theme.colorScheme.primary))
-                        : Icon(Icons.fitness_center, size: 80, color: theme.colorScheme.primary),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Center(
+                          child: (exercise?.videoUrl != null &&
+                                  exercise!.videoUrl!.isNotEmpty)
+                              ? ExerciseVideoPlayer(
+                                  videoUrl: exercise.videoUrl!,
+                                  aspectRatio: 16 / 9,
+                                )
+                              : (exercise?.gifUrl != null &&
+                                      exercise!.gifUrl!.isNotEmpty)
+                                  ? Image.network(
+                                      exercise.gifUrl!,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => Icon(
+                                        Icons.fitness_center,
+                                        size: 80,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.fitness_center,
+                                      size: 80,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                        ),
+                        if (_showMediaPrescription)
+                          Align(
+                            alignment: Alignment.topCenter,
+                            child: Container(
+                              margin: const EdgeInsets.only(top: 16),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.65),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '${item.sets ?? 1} x ${item.reps ?? '--'}',
+                                style:
+                                    theme.textTheme.titleMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -111,8 +183,11 @@ class _RoutinePlayerScreenState extends ConsumerState<RoutinePlayerScreen> {
                         style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
                         onPressed: () {
                           final rest = item.restSeconds ?? 30;
-                          if (rest > 0 && _currentIndex < exercises.length - 1) _startRest(rest);
-                          else setState(() => _currentIndex++);
+                          if (rest > 0 && _currentIndex < exercises.length - 1) {
+                            _startRest(rest);
+                          } else {
+                            setState(() => _currentIndex++);
+                          }
                         },
                         child: Text(_currentIndex < exercises.length - 1 ? 'LISTO' : 'FINALIZAR'),
                       ),
