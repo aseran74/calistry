@@ -1,11 +1,5 @@
 {
   "outputDirectory": "build/web",
-  "buildCommand": "echo \"Using local Flutter web build\"",
-  "rewrites": [
-    {
-      "source": "/(?!.*\\..*)",
-      "destination": "/index.html"
-    }
-  ]
+  "buildCommand": "echo \"Using local Flutter web build\""
 }
 
