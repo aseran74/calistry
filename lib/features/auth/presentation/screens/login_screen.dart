@@ -49,12 +49,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Image.asset(
-                      'logo/logo3.png',
-                      width: 320,
+                      'logo/Logo4.png',
+                      width: 640,
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => Container(
-                        width: 320,
-                        height: 140,
+                        width: 640,
+                        height: 280,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(24),
@@ -64,7 +64,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         child: const Icon(
                           Icons.fitness_center_rounded,
-                          size: 64,
+                          size: 128,
                           color: Color(0xFF00FF87),
                         ),
                       ),

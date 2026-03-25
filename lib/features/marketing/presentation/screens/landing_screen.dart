@@ -170,8 +170,8 @@ class _LogoMark extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: Image.asset(
-        'logo/logo3.png',
-        height: 62,
+        'logo/Logo4.png',
+        height: 124,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => Text(
           'Calistry',

@@ -12,12 +12,12 @@ class AuthLoadingScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(
-              'logo/logo3.png',
-              width: 180,
+              'logo/Logo4.png',
+              width: 360,
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => Container(
-                width: 180,
-                height: 96,
+                width: 360,
+                height: 192,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
@@ -27,7 +27,7 @@ class AuthLoadingScreen extends StatelessWidget {
                 ),
                 child: const Icon(
                   Icons.fitness_center_rounded,
-                  size: 44,
+                  size: 88,
                   color: Color(0xFF00FF87),
                 ),
               ),
