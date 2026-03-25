@@ -49,7 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Image.asset(
-                      'logo/Logo4.png',
+                      'logo/logo3.png',
                       width: 640,
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => Container(

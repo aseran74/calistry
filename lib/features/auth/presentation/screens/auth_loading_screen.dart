@@ -12,7 +12,7 @@ class AuthLoadingScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(
-              'logo/Logo4.png',
+              'logo/logo3.png',
               width: 360,
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => Container(
