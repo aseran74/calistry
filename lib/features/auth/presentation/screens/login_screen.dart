@@ -49,7 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Image.asset(
-                      'logo/Calistry.logo.jpg',
+                      'logo/logo3.png',
                       width: 320,
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => Container(

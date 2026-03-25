@@ -44,7 +44,8 @@ flutter:
     - assets/
     - logo/
     - logo/Calistry.logo.jpg
-    - logo/Google.png
+    - logo/google_play_badge.png
+    - logo/logo3.png
 
 flutter_launcher_icons:
   android: true
