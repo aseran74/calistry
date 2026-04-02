@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:calistenia_app/core/router/route_paths.dart';
 
 /// Tipografía = theme global (Poppins en [AppTheme]); evita cargar fuentes extra en web.
 TextStyle _landingStyle(
@@ -170,7 +171,7 @@ class _LogoMark extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: Image.asset(
-        'logo/logo3.png',
+        'logo/Logo 3.png',
         height: 124,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => Text(
@@ -430,7 +431,7 @@ class _HeroActions extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Image.asset(
-              'logo/google_play_badge.png',
+              'logo/google_play_badge.png.png',
               height: isNarrow ? 48 : 56,
               fit: BoxFit.contain,
             ),
@@ -736,13 +737,47 @@ class _Footer extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
       child: Center(
-        child: Text(
-          '© ${DateTime.now().year} Calistry',
-          style: _landingStyle(
-            context,
-            fontSize: 13,
-            color: Colors.white.withValues(alpha: 0.35),
-          ),
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            Text(
+              '© ${DateTime.now().year} Calistry',
+              style: _landingStyle(
+                context,
+                fontSize: 13,
+                color: Colors.white.withValues(alpha: 0.35),
+              ),
+            ),
+            Text(
+              '·',
+              style: _landingStyle(
+                context,
+                fontSize: 13,
+                color: Colors.white.withValues(alpha: 0.25),
+              ),
+            ),
+            TextButton(
+              onPressed: () => context.push(kPrivacyPath),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white.withValues(alpha: 0.55),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                'Política de privacidad',
+                style: _landingStyle(
+                  context,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: LandingScreen._accent.withValues(alpha: 0.9),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

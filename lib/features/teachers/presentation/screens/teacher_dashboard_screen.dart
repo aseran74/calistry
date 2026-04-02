@@ -631,6 +631,14 @@ class _CreateExerciseDialogContent extends StatefulWidget {
 class _CreateExerciseDialogContentState
     extends State<_CreateExerciseDialogContent> {
   late final TextEditingController _nameController;
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _musclesController;
+  late final TextEditingController _durationController;
+  late final TextEditingController _repsController;
+  late final TextEditingController _setsController;
+  late final TextEditingController _gifController;
+  late final TextEditingController _videoController;
+  late final TextEditingController _thumbnailController;
   late String _category;
   late String _difficulty;
   bool _submitting = false;
@@ -639,6 +647,14 @@ class _CreateExerciseDialogContentState
   void initState() {
     super.initState();
     _nameController = TextEditingController();
+    _descriptionController = TextEditingController();
+    _musclesController = TextEditingController();
+    _durationController = TextEditingController();
+    _repsController = TextEditingController();
+    _setsController = TextEditingController();
+    _gifController = TextEditingController();
+    _videoController = TextEditingController();
+    _thumbnailController = TextEditingController();
     _category = exerciseCategories.first;
     _difficulty = exerciseDifficulties.first;
   }
@@ -646,6 +662,14 @@ class _CreateExerciseDialogContentState
   @override
   void dispose() {
     _nameController.dispose();
+    _descriptionController.dispose();
+    _musclesController.dispose();
+    _durationController.dispose();
+    _repsController.dispose();
+    _setsController.dispose();
+    _gifController.dispose();
+    _videoController.dispose();
+    _thumbnailController.dispose();
     super.dispose();
   }
 
@@ -656,14 +680,28 @@ class _CreateExerciseDialogContentState
     try {
       await widget.ref.read(apiClientProvider).createTeacherExercise(
             name: name,
-            description: null,
+            description: _descriptionController.text.trim().isEmpty
+                ? null
+                : _descriptionController.text.trim(),
             category: _category,
             difficulty: _difficulty,
-            muscleGroups: const [],
-            durationSeconds: null,
-            gifUrl: null,
-            videoUrl: null,
-            thumbnailUrl: null,
+            muscleGroups: _musclesController.text
+                .split(',')
+                .map((item) => item.trim())
+                .where((item) => item.isNotEmpty)
+                .toList(),
+            durationSeconds: int.tryParse(_durationController.text.trim()),
+            reps: int.tryParse(_repsController.text.trim()),
+            sets: int.tryParse(_setsController.text.trim()),
+            gifUrl: _gifController.text.trim().isEmpty
+                ? null
+                : _gifController.text.trim(),
+            videoUrl: _videoController.text.trim().isEmpty
+                ? null
+                : _videoController.text.trim(),
+            thumbnailUrl: _thumbnailController.text.trim().isEmpty
+                ? null
+                : _thumbnailController.text.trim(),
           );
       if (!widget.dialogContext.mounted) return;
       Navigator.of(widget.dialogContext).pop();
@@ -697,6 +735,13 @@ class _CreateExerciseDialogContentState
               onSubmitted: (_) => _submit(),
             ),
             const SizedBox(height: 12),
+            TextField(
+              controller: _descriptionController,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(labelText: 'Descripción'),
+            ),
+            const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _category,
               decoration: const InputDecoration(labelText: 'Categoría'),
@@ -727,6 +772,48 @@ class _CreateExerciseDialogContentState
               onChanged: _submitting
                   ? null
                   : (v) => setState(() => _difficulty = v ?? _difficulty),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _musclesController,
+              decoration: const InputDecoration(
+                labelText: 'Grupos musculares (separados por coma)',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _durationController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Duración por serie (segundos)',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _repsController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Nº repeticiones'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _setsController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Nº series'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _gifController,
+              decoration: const InputDecoration(labelText: 'GIF URL'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _videoController,
+              decoration: const InputDecoration(labelText: 'Video URL'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _thumbnailController,
+              decoration: const InputDecoration(labelText: 'Thumbnail URL'),
             ),
           ],
         ),

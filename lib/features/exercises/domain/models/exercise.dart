@@ -9,6 +9,8 @@ class Exercise {
   final String? gifUrl;
   final String? thumbnailUrl;
   final int? durationSeconds;
+  final int? reps;
+  final int? sets;
   final bool isActive;
   final String? ownerUserId;
   final String? ownerDisplayName;
@@ -24,6 +26,8 @@ class Exercise {
     this.gifUrl,
     this.thumbnailUrl,
     this.durationSeconds,
+    this.reps,
+    this.sets,
     this.isActive = true,
     this.ownerUserId,
     this.ownerDisplayName,
@@ -44,6 +48,8 @@ class Exercise {
       gifUrl: json['gif_url'] as String?,
       thumbnailUrl: json['thumbnail_url'] as String?,
       durationSeconds: json['duration_seconds'] as int?,
+      reps: json['reps'] as int?,
+      sets: json['sets'] as int?,
       isActive: json['is_active'] as bool? ?? true,
       ownerUserId: json['owner_user_id'] as String?,
       ownerDisplayName: json['owner_display_name'] as String?,

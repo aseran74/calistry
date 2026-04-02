@@ -7,10 +7,12 @@ import 'package:calistenia_app/features/exercises/presentation/widgets/exercise_
 
 class RoutinePlayerScreen extends ConsumerStatefulWidget {
   const RoutinePlayerScreen({super.key, required this.routineId});
+
   final String routineId;
 
   @override
-  ConsumerState<RoutinePlayerScreen> createState() => _RoutinePlayerScreenState();
+  ConsumerState<RoutinePlayerScreen> createState() =>
+      _RoutinePlayerScreenState();
 }
 
 class _RoutinePlayerScreenState extends ConsumerState<RoutinePlayerScreen> {
@@ -66,7 +68,7 @@ class _RoutinePlayerScreenState extends ConsumerState<RoutinePlayerScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface, // Dinámico
+      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
         title: const Text('Entrenando'),
         elevation: 0,
@@ -75,13 +77,17 @@ class _RoutinePlayerScreenState extends ConsumerState<RoutinePlayerScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (data) {
-          if (data == null || data.exercises.isEmpty) return const Center(child: Text('Sin ejercicios'));
+          if (data == null || data.exercises.isEmpty)
+            return const Center(child: Text('Sin ejercicios'));
           final exercises = data.exercises;
-          if (_currentIndex >= exercises.length) return _buildSummary(data.routine.name, theme);
+
+          if (_currentIndex >= exercises.length)
+            return _buildSummary(data.routine.name, theme);
           if (_isResting) return _buildRestView(theme);
 
           final item = exercises[_currentIndex];
           final exercise = item.exercise;
+
           if (_lastOverlayItemId != item.id) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
@@ -97,7 +103,8 @@ class _RoutinePlayerScreenState extends ConsumerState<RoutinePlayerScreen> {
               ),
               const SizedBox(height: 20),
               Text('EJERCICIO ${_currentIndex + 1} DE ${exercises.length}',
-                  style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.primary)),
+                  style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.primary)),
 
               Expanded(
                 child: Container(
@@ -113,27 +120,21 @@ class _RoutinePlayerScreenState extends ConsumerState<RoutinePlayerScreen> {
                       children: [
                         Center(
                           child: (exercise?.videoUrl != null &&
-                                  exercise!.videoUrl!.isNotEmpty)
+                              exercise!.videoUrl!.isNotEmpty)
                               ? ExerciseVideoPlayer(
-                                  videoUrl: exercise.videoUrl!,
-                                  aspectRatio: 16 / 9,
-                                )
+                              videoUrl: exercise.videoUrl!, aspectRatio: 16 / 9)
                               : (exercise?.gifUrl != null &&
-                                      exercise!.gifUrl!.isNotEmpty)
-                                  ? Image.network(
-                                      exercise.gifUrl!,
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (_, __, ___) => Icon(
-                                        Icons.fitness_center,
-                                        size: 80,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                    )
-                                  : Icon(
-                                      Icons.fitness_center,
-                                      size: 80,
-                                      color: theme.colorScheme.primary,
-                                    ),
+                              exercise!.gifUrl!.isNotEmpty)
+                              ? Image.network(
+                            exercise.gifUrl!,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) =>
+                                Icon(
+                                Icons.fitness_center, size: 80,
+                                color: theme.colorScheme.primary),
+                          )
+                              : Icon(Icons.fitness_center, size: 80,
+                              color: theme.colorScheme.primary),
                         ),
                         if (_showMediaPrescription)
                           Align(
@@ -141,20 +142,16 @@ class _RoutinePlayerScreenState extends ConsumerState<RoutinePlayerScreen> {
                             child: Container(
                               margin: const EdgeInsets.only(top: 16),
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
+                                  horizontal: 14, vertical: 8),
                               decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.65),
+                                color: Colors.black.withOpacity(0.65),
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               child: Text(
                                 '${item.sets ?? 1} x ${item.reps ?? '--'}',
-                                style:
-                                    theme.textTheme.titleMedium?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800),
                               ),
                             ),
                           ),
@@ -164,32 +161,66 @@ class _RoutinePlayerScreenState extends ConsumerState<RoutinePlayerScreen> {
                 ),
               ),
 
-              Text(exercise?.name ?? 'Ejercicio', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text('${item.sets ?? 1} Series x ${item.reps ?? '--'} Reps',
-                  style: theme.textTheme.titleLarge?.copyWith(color: theme.colorScheme.secondary)),
+              Text(
+                exercise?.name ?? 'Ejercicio',
+                style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 12),
+
+              // INDICADOR VISUAL DE SERIES Y REPS
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 40),
+                padding: const EdgeInsets.symmetric(
+                    vertical: 16, horizontal: 24),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondaryContainer.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: theme.colorScheme.secondary.withOpacity(0.1)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildExerciseStat(
+                        theme, Icons.repeat, '${item.sets ?? 1}', 'SERIES'),
+                    Container(height: 30,
+                        width: 1,
+                        color: theme.colorScheme.secondary.withOpacity(0.2)),
+                    _buildExerciseStat(
+                        theme, Icons.fitness_center, '${item.reps ?? '--'}',
+                        'REPS'),
+                  ],
+                ),
+              ),
 
               Padding(
                 padding: const EdgeInsets.all(30),
                 child: Row(
                   children: [
                     IconButton.outlined(
-                      onPressed: _currentIndex > 0 ? () => setState(() => _currentIndex--) : null,
+                      onPressed: _currentIndex > 0 ? () =>
+                          setState(() => _currentIndex--) : null,
                       icon: const Icon(Icons.arrow_back_ios_new),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: FilledButton(
-                        style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                        style: FilledButton.styleFrom(padding: const EdgeInsets
+                            .symmetric(vertical: 16)),
                         onPressed: () {
                           final rest = item.restSeconds ?? 30;
-                          if (rest > 0 && _currentIndex < exercises.length - 1) {
+                          if (rest > 0 &&
+                              _currentIndex < exercises.length - 1) {
                             _startRest(rest);
                           } else {
                             setState(() => _currentIndex++);
                           }
                         },
-                        child: Text(_currentIndex < exercises.length - 1 ? 'LISTO' : 'FINALIZAR'),
+                        child: Text(_currentIndex < exercises.length - 1
+                            ? 'LISTO'
+                            : 'FINALIZAR'),
                       ),
                     ),
                   ],
@@ -199,6 +230,37 @@ class _RoutinePlayerScreenState extends ConsumerState<RoutinePlayerScreen> {
           );
         },
       ),
+    );
+  }
+
+  // MÉTODO AUXILIAR CORREGIDO (DENTRO DE LA CLASE)
+  Widget _buildExerciseStat(ThemeData theme, IconData icon, String value,
+      String label) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 18, color: theme.colorScheme.secondary),
+            const SizedBox(width: 8),
+            Text(
+              value,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.secondary,
+              ),
+            ),
+          ],
+        ),
+        Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.1,
+            color: theme.colorScheme.secondary.withOpacity(0.8),
+          ),
+        ),
+      ],
     );
   }
 
@@ -212,13 +274,23 @@ class _RoutinePlayerScreenState extends ConsumerState<RoutinePlayerScreen> {
           Stack(
             alignment: Alignment.center,
             children: [
-              SizedBox(width: 180, height: 180, child: CircularProgressIndicator(value: _restSecondsLeft / 30, strokeWidth: 8)),
-              Text('${_restSecondsLeft}s', style: theme.textTheme.displayMedium),
+              SizedBox(width: 180,
+                  height: 180,
+                  child: CircularProgressIndicator(
+                      value: _restSecondsLeft / 30, strokeWidth: 8)),
+              Text(
+                  '${_restSecondsLeft}s', style: theme.textTheme.displayMedium),
             ],
           ),
           const SizedBox(height: 40),
-          TextButton(onPressed: () => setState(() { _isResting = false; _currentIndex++; }),
-              child: const Text('SALTAR DESCANSO')),
+          TextButton(
+            onPressed: () =>
+                setState(() {
+                  _isResting = false;
+                  _currentIndex++;
+                }),
+            child: const Text('SALTAR DESCANSO'),
+          ),
         ],
       ),
     );
@@ -235,7 +307,8 @@ class _RoutinePlayerScreenState extends ConsumerState<RoutinePlayerScreen> {
           const SizedBox(height: 10),
           Text(name),
           const SizedBox(height: 40),
-          FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text('SALIR')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(),
+              child: const Text('SALIR')),
         ],
       ),
     );

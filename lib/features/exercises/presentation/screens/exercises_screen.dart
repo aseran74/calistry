@@ -76,6 +76,8 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
     final descriptionController = TextEditingController();
     final musclesController = TextEditingController();
     final durationController = TextEditingController();
+    final repsController = TextEditingController();
+    final setsController = TextEditingController();
     final gifController = TextEditingController();
     final videoController = TextEditingController();
     final thumbnailController = TextEditingController();
@@ -108,6 +110,8 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                             .toList(),
                         durationSeconds:
                             int.tryParse(durationController.text.trim()),
+                        reps: int.tryParse(repsController.text.trim()),
+                        sets: int.tryParse(setsController.text.trim()),
                         gifUrl: gifController.text.trim().isEmpty
                             ? null
                             : gifController.text.trim(),
@@ -212,6 +216,22 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                         ),
                         const SizedBox(height: 12),
                         TextField(
+                          controller: repsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Nº repeticiones',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: setsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Nº series',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
                           controller: gifController,
                           decoration:
                               const InputDecoration(labelText: 'GIF URL'),
@@ -255,6 +275,8 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
       descriptionController.dispose();
       musclesController.dispose();
       durationController.dispose();
+      repsController.dispose();
+      setsController.dispose();
       gifController.dispose();
       videoController.dispose();
       thumbnailController.dispose();

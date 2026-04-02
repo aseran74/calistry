@@ -5,6 +5,7 @@ import 'package:calistenia_app/features/exercises/presentation/providers/exercis
 import 'package:calistenia_app/core/api/api_providers.dart';
 import 'package:calistenia_app/core/theme/theme.dart';
 import 'package:calistenia_app/features/exercises/domain/exercise_metadata.dart';
+import 'package:calistenia_app/features/exercises/domain/models/exercise.dart';
 import 'package:calistenia_app/features/exercises/presentation/widgets/exercise_video_player.dart';
 
 class ExerciseDetailScreen extends ConsumerStatefulWidget {
@@ -22,6 +23,14 @@ class ExerciseDetailScreen extends ConsumerStatefulWidget {
 
 class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
   bool _isFavorite = false;
+
+  int? _totalSecondsForExercise(Exercise exercise) {
+    final duration = exercise.durationSeconds;
+    final sets = exercise.sets;
+    if (duration == null || duration <= 0) return null;
+    if (sets == null || sets <= 0) return duration;
+    return duration * sets;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,6 +128,16 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                               ),
                             ),
                             Positioned(
+                              left: 14,
+                              right: 14,
+                              top: 68,
+                              child: _ExerciseInfoMenu(
+                                totalSeconds: _totalSecondsForExercise(exercise),
+                                reps: exercise.reps,
+                                sets: exercise.sets,
+                              ),
+                            ),
+                            Positioned(
                               left: 20,
                               right: 20,
                               bottom: 28,
@@ -172,6 +191,14 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                                         _DetailBadge(
                                           label: '${exercise.durationSeconds}s',
                                         ),
+                                      if ((exercise.reps ?? 0) > 0)
+                                        _DetailBadge(
+                                          label: '${exercise.reps} reps',
+                                        ),
+                                      if ((exercise.sets ?? 0) > 0)
+                                        _DetailBadge(
+                                          label: '${exercise.sets} series',
+                                        ),
                                       if ((exercise.ownerDisplayName ?? '')
                                           .trim()
                                           .isNotEmpty)
@@ -191,13 +218,29 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                             ),
                           ],
                         )
-                      : Container(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          child: Icon(
-                            Icons.fitness_center,
-                            size: 80,
-                            color: theme.colorScheme.outline,
-                          ),
+                      : Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Container(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              child: Icon(
+                                Icons.fitness_center,
+                                size: 80,
+                                color: theme.colorScheme.outline,
+                              ),
+                            ),
+                            Positioned(
+                              left: 14,
+                              right: 14,
+                              top: 68,
+                              child: _ExerciseInfoMenu(
+                                totalSeconds: _totalSecondsForExercise(exercise),
+                                reps: exercise.reps,
+                                sets: exercise.sets,
+                                darkText: true,
+                              ),
+                            ),
+                          ],
                         ),
                 ),
               ),
@@ -301,6 +344,132 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _ExerciseInfoMenu extends StatelessWidget {
+  const _ExerciseInfoMenu({
+    required this.totalSeconds,
+    required this.reps,
+    required this.sets,
+    this.darkText = false,
+  });
+
+  final int? totalSeconds;
+  final int? reps;
+  final int? sets;
+  final bool darkText;
+
+  String get _timeLabel {
+    final seconds = totalSeconds;
+    if (seconds == null || seconds <= 0) return '-';
+    final minutes = seconds ~/ 60;
+    final rem = seconds % 60;
+    if (minutes <= 0) return '${seconds}s';
+    return rem == 0 ? '${minutes}m' : '${minutes}m ${rem}s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = darkText ? Colors.black87 : Colors.white;
+    final bg = darkText
+        ? Colors.white.withValues(alpha: 0.82)
+        : Colors.black.withValues(alpha: 0.52);
+    final width = MediaQuery.sizeOf(context).width;
+    final isWide = width >= 900;
+    final isCompact = width < 420;
+    final horizontalPadding = isWide ? 16.0 : (isCompact ? 10.0 : 14.0);
+    final verticalPadding = isWide ? 12.0 : (isCompact ? 9.0 : 11.0);
+    final spacing = isWide ? 16.0 : (isCompact ? 8.0 : 14.0);
+    final runSpacing = isWide ? 10.0 : (isCompact ? 7.0 : 10.0);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: darkText
+              ? Colors.black.withValues(alpha: 0.08)
+              : Colors.white.withValues(alpha: 0.16),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: horizontalPadding,
+          vertical: verticalPadding,
+        ),
+        child: Wrap(
+          spacing: spacing,
+          runSpacing: runSpacing,
+          children: [
+            _DetailMetric(
+              label: 'Tiempo total',
+              value: _timeLabel,
+              color: fg,
+              isWide: isWide,
+              isCompact: isCompact,
+            ),
+            _DetailMetric(
+              label: 'Nº repeticiones',
+              value: reps?.toString() ?? '-',
+              color: fg,
+              isWide: isWide,
+              isCompact: isCompact,
+            ),
+            _DetailMetric(
+              label: 'Nº series',
+              value: sets?.toString() ?? '-',
+              color: fg,
+              isWide: isWide,
+              isCompact: isCompact,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailMetric extends StatelessWidget {
+  const _DetailMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.isWide,
+    required this.isCompact,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+  final bool isWide;
+  final bool isCompact;
+
+  @override
+  Widget build(BuildContext context) {
+    final labelStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
+          color: color.withValues(alpha: 0.92),
+          fontWeight: FontWeight.w700,
+          fontSize: isWide ? 15 : (isCompact ? 12 : null),
+        );
+    final valueSize = isWide ? 20.0 : (isCompact ? 16.0 : 18.0);
+
+    return RichText(
+      text: TextSpan(
+        style: labelStyle,
+        children: [
+          TextSpan(text: '$label: '),
+          TextSpan(
+            text: value,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w900,
+              fontSize: valueSize,
+            ),
+          ),
+        ],
       ),
     );
   }

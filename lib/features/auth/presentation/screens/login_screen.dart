@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:calistenia_app/core/router/route_paths.dart';
 import 'package:calistenia_app/features/auth/presentation/providers/auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -49,7 +50,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Image.asset(
-                      'logo/logo3.png',
+                      'logo/Logo 3.png',
                       width: 640,
                       fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => Container(
@@ -162,8 +163,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () => context.push(kPrivacyPath),
+                      child: const Text('Política de privacidad'),
+                    ),
                     if (kIsWeb) ...[
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
                       TextButton.icon(
                         onPressed: () => context.go('/welcome'),
                         icon: const Icon(Icons.arrow_back_rounded, size: 18),

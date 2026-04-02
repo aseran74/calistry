@@ -702,6 +702,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     final durationController = TextEditingController(
       text: exercise?['duration_seconds']?.toString() ?? '',
     );
+    final repsController = TextEditingController(
+      text: exercise?['reps']?.toString() ?? '',
+    );
+    final setsController = TextEditingController(
+      text: exercise?['sets']?.toString() ?? '',
+    );
     final gifController =
         TextEditingController(text: exercise?['gif_url']?.toString() ?? '');
     final videoController =
@@ -847,6 +853,22 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextField(
+                        controller: repsController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Nº repeticiones',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: setsController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Nº series',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
                         controller: gifController,
                         decoration: const InputDecoration(labelText: 'GIF URL'),
                       ),
@@ -930,6 +952,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                           .toList(),
                       'duration_seconds':
                           int.tryParse(durationController.text.trim()),
+                      'reps': int.tryParse(repsController.text.trim()),
+                      'sets': int.tryParse(setsController.text.trim()),
                       'gif_url': gifController.text.trim().isEmpty
                           ? null
                           : gifController.text.trim(),
@@ -958,6 +982,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     descController.dispose();
     musclesController.dispose();
     durationController.dispose();
+    repsController.dispose();
+    setsController.dispose();
     gifController.dispose();
     videoController.dispose();
     thumbnailController.dispose();
@@ -1750,6 +1776,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                           value:
                               "${exercise['duration_seconds'] ?? '-'} s",
                         ),
+                        _MiniMeta(
+                          label: 'Reps',
+                          value: "${exercise['reps'] ?? '-'}",
+                        ),
+                        _MiniMeta(
+                          label: 'Series',
+                          value: "${exercise['sets'] ?? '-'}",
+                        ),
                       ],
                     ),
                     const Spacer(),
@@ -2114,6 +2148,11 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     const SizedBox(height: 6),
                     Text(
                       'Músculos: ${muscles.isEmpty ? '-' : muscles}',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Duración: ${submission['duration_seconds'] ?? '-'} s | Series: ${submission['sets'] ?? '-'} | Repeticiones: ${submission['reps'] ?? '-'}',
                       style: theme.textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 6),

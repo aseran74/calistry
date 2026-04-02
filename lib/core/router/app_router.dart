@@ -12,7 +12,9 @@ import 'package:calistenia_app/features/exercises/presentation/screens/exercises
 import 'package:calistenia_app/features/home/presentation/screens/home_screen.dart';
 import 'package:calistenia_app/features/live_classes/presentation/screens/live_class_room_screen.dart';
 import 'package:calistenia_app/features/live_classes/presentation/screens/live_classes_screen.dart';
+import 'package:calistenia_app/core/router/route_paths.dart';
 import 'package:calistenia_app/features/marketing/presentation/screens/landing_screen.dart';
+import 'package:calistenia_app/features/marketing/presentation/screens/privacy_policy_screen.dart';
 import 'package:calistenia_app/features/messages/presentation/screens/chat_screen.dart';
 import 'package:calistenia_app/features/messages/presentation/screens/messages_screen.dart';
 import 'package:calistenia_app/features/profile/presentation/screens/profile_screen.dart';
@@ -42,9 +44,6 @@ final _shellNavigatorExercisesKey = GlobalKey<NavigatorState>();
 final _shellNavigatorRoutinesKey = GlobalKey<NavigatorState>();
 final _shellNavigatorPlanningKey = GlobalKey<NavigatorState>();
 final _shellNavigatorProfileKey = GlobalKey<NavigatorState>();
-
-/// Ruta estable de la landing en web (evita `matchedLocation` vacío en `/`).
-const String kLandingPath = '/welcome';
 
 String _routerLocation(GoRouterState state) {
   var loc = state.matchedLocation;
@@ -95,15 +94,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           location.startsWith('/user/routines/');
       final isAuthenticated = auth.isAuthenticated;
       final isWelcome = location == kLandingPath;
+      final isPrivacy = location == kPrivacyPath;
 
       if (auth.status == AuthStatus.loading) {
         if (isLoading) return null;
         // Misma URL que en local: la landing puede mostrarse mientras hidrata la sesión.
         if (kIsWeb && isWelcome) return null;
+        if (isPrivacy) return null;
         return '/auth-loading';
       }
 
       if (!isAuthenticated) {
+        if (isPrivacy) return null;
         if (kIsWeb && isWelcome) return null;
         if (isLogin) return null;
         if (isLoading) return kIsWeb ? kLandingPath : '/login';
@@ -132,7 +134,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // En web, un admin debe aterrizar siempre en su dashboard dedicado,
       // aunque el navegador haya conservado una ruta previa del shell normal.
-      if (auth.isAdmin && !isAdminRoute) {
+      if (auth.isAdmin && !isAdminRoute && !isPrivacy) {
         return '/admin';
       }
 
@@ -141,7 +143,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // plataforma (no solo web).
       if (auth.isTeacher &&
           !auth.isAdmin &&
-          !isTeacherWorkspaceRoute) {
+          !isTeacherWorkspaceRoute &&
+          !isPrivacy) {
         return '/teacher';
       }
 
@@ -182,6 +185,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: kLandingPath,
         name: 'landing',
         builder: (context, state) => const LandingScreen(),
+      ),
+      GoRoute(
+        path: kPrivacyPath,
+        name: 'privacy',
+        builder: (context, state) => const PrivacyPolicyScreen(),
       ),
       GoRoute(
         path: '/auth-loading',

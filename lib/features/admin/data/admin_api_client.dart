@@ -301,6 +301,8 @@ class AdminApiClient {
         'video_url': submission['video_url']?.toString(),
         'thumbnail_url': submission['thumbnail_url']?.toString(),
         'duration_seconds': submission['duration_seconds'],
+        'reps': submission['reps'],
+        'sets': submission['sets'],
         'is_active': true,
       },
     );
