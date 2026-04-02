@@ -2,18 +2,29 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Calistry Auth</title>
+  <title>Calistry — autenticación</title>
 </head>
 <body>
+  <p>Si no se cierra sola, puedes cerrar esta ventana.</p>
   <script>
-    if (window.opener) {
-      window.opener.postMessage({
+    function postAuthenticationMessage() {
+      const message = {
         'flutter-web-auth-2': window.location.href
-      }, window.location.origin);
-      window.close();
-    } else {
-      window.location.replace('/#' + window.location.href);
+      };
+
+      if (window.opener) {
+        window.opener.postMessage(message, window.location.origin);
+        window.close();
+      } else if (window.parent && window.parent !== window) {
+        window.parent.postMessage(message, window.location.origin);
+      } else {
+        // url_launcher en web abre con noopener: no hay opener; el plugin lee esto por localStorage.
+        localStorage.setItem('flutter-web-auth-2', window.location.href);
+        window.close();
+      }
     }
+
+    postAuthenticationMessage();
   </script>
 </body>
 </html>
