@@ -11,7 +11,7 @@ class ApiConfig {
   );
   static const String authCallbackScheme = String.fromEnvironment(
     'AUTH_CALLBACK_SCHEME',
-    defaultValue: 'calisteniaapp',
+    defaultValue: 'com.alvaro.calisteniaapp',
   );
   static const String authRedirectUri = '$authCallbackScheme://auth-callback';
 

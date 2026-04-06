@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:calistenia_app/core/constants/app_pitch_steps.dart';
 import 'package:calistenia_app/core/router/route_paths.dart';
 
 /// Tipografía = theme global (Poppins en [AppTheme]); evita cargar fuentes extra en web.
@@ -88,6 +89,9 @@ class _LandingScreenState extends State<LandingScreen> {
                   isNarrow: isNarrow,
                   onScrollToFeatures: _scrollToFeatures,
                 ),
+              ),
+              SliverToBoxAdapter(
+                child: _LandingPitchSteps(isNarrow: isNarrow),
               ),
               SliverToBoxAdapter(
                 key: _featuresKey,
@@ -434,6 +438,134 @@ class _HeroActions extends StatelessWidget {
               'logo/google_play_badge.png.png',
               height: isNarrow ? 48 : 56,
               fit: BoxFit.contain,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LandingPitchSteps extends StatelessWidget {
+  const _LandingPitchSteps({required this.isNarrow});
+
+  final bool isNarrow;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        isNarrow ? 20 : 48,
+        0,
+        isNarrow ? 20 : 48,
+        28,
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1120),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              color: LandingScreen._surface,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(isNarrow ? 18 : 26),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.checklist_rounded,
+                        size: 22,
+                        color: LandingScreen._accent,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Tu calistenia en 5 pasos',
+                          style: _landingStyle(
+                            context,
+                            fontSize: isNarrow ? 17 : 19,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white.withValues(alpha: 0.95),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  for (var i = 0; i < kAppPitchSteps.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 10),
+                    _LandingPitchRow(
+                      index: i + 1,
+                      text: kAppPitchSteps[i],
+                      compact: isNarrow,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LandingPitchRow extends StatelessWidget {
+  const _LandingPitchRow({
+    required this.index,
+    required this.text,
+    required this.compact,
+  });
+
+  final int index;
+  final String text;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: compact ? 26 : 28,
+          height: compact ? 26 : 28,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: LandingScreen._accent.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: LandingScreen._accent.withValues(alpha: 0.35),
+            ),
+          ),
+          child: Text(
+            '$index',
+            style: _landingStyle(
+              context,
+              fontSize: compact ? 12 : 13,
+              fontWeight: FontWeight.w800,
+              color: LandingScreen._accent,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              text,
+              style: _landingStyle(
+                context,
+                fontSize: compact ? 14 : 15,
+                height: 1.4,
+                color: Colors.white.withValues(alpha: 0.78),
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ),

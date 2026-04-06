@@ -1,5 +1,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.alvaro.calisteniaapp"> <!-- HEMOS AÑADIDO ESTO -->
+    package="com.alvaro.calisteniaapp">
+
+    <!-- Obligatorias para conectar al backend -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Cámara y galería (image_picker, file_picker, avatares, etc.) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
 
     <application
         android:label="Calistry"
@@ -24,7 +39,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Configuración para Auth (Login Google/Inngage) -->
+        <!-- OAuth (flutter_web_auth_2): debe coincidir con AUTH_CALLBACK_SCHEME / authRedirectUri en Dart -->
         <activity
             android:name="com.linusu.flutter_web_auth_2.CallbackActivity"
             android:exported="true">
@@ -32,7 +47,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="calisteniaapp" />
+                <data android:scheme="com.alvaro.calisteniaapp" />
             </intent-filter>
         </activity>
 

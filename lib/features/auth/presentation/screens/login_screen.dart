@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:calistenia_app/core/router/route_paths.dart';
 import 'package:calistenia_app/features/auth/presentation/providers/auth_controller.dart';
 
@@ -16,6 +17,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  String? _appVersionLine;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (!mounted) return;
+      setState(() {
+        _appVersionLine = 'Versión ${info.version} · build ${info.buildNumber}';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _appVersionLine = 'Versión 1.6.0');
+    }
+  }
 
   @override
   void dispose() {
@@ -182,6 +203,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         onPressed: () => context.go('/welcome'),
                         icon: const Icon(Icons.arrow_back_rounded, size: 18),
                         label: const Text('Volver a la portada'),
+                      ),
+                    ],
+                    if (_appVersionLine != null) ...[
+                      const SizedBox(height: 20),
+                      Text(
+                        _appVersionLine!,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant
+                              .withValues(alpha: 0.85),
+                        ),
                       ),
                     ],
                   ],
