@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:calistenia_app/core/router/route_paths.dart';
+import 'package:calistenia_app/core/widgets/app_pitch_steps_panel.dart';
 import 'package:calistenia_app/features/auth/presentation/providers/auth_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -114,7 +115,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 20),
+                    const AppPitchStepsPanel(compact: true),
+                    const SizedBox(height: 24),
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
