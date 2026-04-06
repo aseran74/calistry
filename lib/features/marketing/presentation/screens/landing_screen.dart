@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:calistenia_app/core/constants/app_pitch_steps.dart';
 import 'package:calistenia_app/core/router/route_paths.dart';
+import 'package:calistenia_app/core/widgets/animated_pitch_icon.dart';
 
 /// Tipografía = theme global (Poppins en [AppTheme]); evita cargar fuentes extra en web.
 TextStyle _landingStyle(
@@ -452,8 +453,8 @@ class _LandingPitchSteps extends StatelessWidget {
   final bool isNarrow;
 
   static const _cardGap = 14.0;
-  static const _cardWidth = 172.0;
-  static const _stripHeight = 142.0;
+  static const _cardWidth = 196.0;
+  static const _stripHeight = 168.0;
 
   @override
   Widget build(BuildContext context) {
@@ -490,7 +491,7 @@ class _LandingPitchSteps extends StatelessWidget {
                     parent: AlwaysScrollableScrollPhysics(),
                   ),
                   clipBehavior: Clip.none,
-                  itemCount: kAppPitchSteps.length,
+                  itemCount: kAppPitchStepsList.length,
                   separatorBuilder: (_, __) =>
                       const SizedBox(width: _cardGap),
                   itemBuilder: (context, i) {
@@ -499,7 +500,7 @@ class _LandingPitchSteps extends StatelessWidget {
                       height: _stripHeight,
                       child: _LandingPitchCard(
                         index: i + 1,
-                        text: kAppPitchSteps[i],
+                        step: kAppPitchStepsList[i],
                       ),
                     );
                   },
@@ -513,15 +514,15 @@ class _LandingPitchSteps extends StatelessWidget {
   }
 }
 
-/// Tarjeta mínima: índice + texto, borde fino, sin sombras pesadas.
+/// Tarjeta mínima: icono animado + índice + texto.
 class _LandingPitchCard extends StatelessWidget {
   const _LandingPitchCard({
     required this.index,
-    required this.text,
+    required this.step,
   });
 
   final int index;
-  final String text;
+  final AppPitchStep step;
 
   @override
   Widget build(BuildContext context) {
@@ -535,32 +536,47 @@ class _LandingPitchCard extends StatelessWidget {
         color: Colors.white.withValues(alpha: 0.02),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-        child: Column(
+        padding: const EdgeInsets.fromLTRB(10, 12, 12, 12),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              idxLabel,
-              style: _landingStyle(
-                context,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.6,
-                color: LandingScreen._accent.withValues(alpha: 0.85),
-              ),
+            AnimatedPitchIcon(
+              icon: step.icon,
+              index: index - 1,
+              color: LandingScreen._accent,
+              size: 26,
+              containerPadding: 9,
             ),
-            const SizedBox(height: 10),
-            Text(
-              text,
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
-              style: _landingStyle(
-                context,
-                fontSize: 13.5,
-                height: 1.38,
-                fontWeight: FontWeight.w500,
-                color: Colors.white.withValues(alpha: 0.72),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    idxLabel,
+                    style: _landingStyle(
+                      context,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.4,
+                      color: LandingScreen._accent.withValues(alpha: 0.75),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    step.text,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                    style: _landingStyle(
+                      context,
+                      fontSize: 12.5,
+                      height: 1.35,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withValues(alpha: 0.72),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

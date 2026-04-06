@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:calistenia_app/core/constants/app_pitch_steps.dart';
+import 'package:calistenia_app/core/widgets/animated_pitch_icon.dart';
 
 /// Bloque «Tu calistenia en 5 pasos» (home, login, etc.).
 class AppPitchStepsPanel extends StatelessWidget {
@@ -15,8 +16,10 @@ class AppPitchStepsPanel extends StatelessWidget {
     final pad = compact
         ? const EdgeInsets.fromLTRB(12, 10, 12, 12)
         : const EdgeInsets.fromLTRB(16, 14, 16, 16);
-    final rowGap = compact ? 6.0 : 8.0;
+    final rowGap = compact ? 8.0 : 10.0;
     final titleSize = compact ? 14.0 : null;
+    final iconSize = compact ? 20.0 : 22.0;
+    final iconPad = compact ? 6.0 : 8.0;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -50,40 +53,44 @@ class AppPitchStepsPanel extends StatelessWidget {
                 ),
               ],
             ),
-            SizedBox(height: compact ? 10 : 12),
-            for (var i = 0; i < kAppPitchSteps.length; i++) ...[
+            SizedBox(height: compact ? 12 : 14),
+            for (var i = 0; i < kAppPitchStepsList.length; i++) ...[
               if (i > 0) SizedBox(height: rowGap),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: compact ? 24 : 26,
-                    height: compact ? 24 : 26,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: cs.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${i + 1}',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        fontSize: compact ? 11 : null,
-                        fontWeight: FontWeight.w800,
-                        color: cs.primary,
-                      ),
-                    ),
+                  AnimatedPitchIcon(
+                    icon: kAppPitchStepsList[i].icon,
+                    index: i,
+                    color: cs.primary,
+                    size: iconSize,
+                    containerPadding: iconPad,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      kAppPitchSteps[i],
-                      style: (compact
-                              ? theme.textTheme.bodySmall
-                              : theme.textTheme.bodyMedium)
-                          ?.copyWith(
-                        height: 1.35,
-                        color: cs.onSurfaceVariant,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${i + 1}',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontSize: compact ? 11 : null,
+                            fontWeight: FontWeight.w800,
+                            color: cs.primary.withValues(alpha: 0.85),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          kAppPitchStepsList[i].text,
+                          style: (compact
+                                  ? theme.textTheme.bodySmall
+                                  : theme.textTheme.bodyMedium)
+                              ?.copyWith(
+                            height: 1.35,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
