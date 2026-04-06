@@ -452,7 +452,8 @@ class _LandingPitchSteps extends StatelessWidget {
   final bool isNarrow;
 
   static const _cardGap = 14.0;
-  static const _scrollCardWidth = 168.0;
+  static const _cardWidth = 172.0;
+  static const _stripHeight = 142.0;
 
   @override
   Widget build(BuildContext context) {
@@ -473,49 +474,37 @@ class _LandingPitchSteps extends StatelessWidget {
                 'Tu calistenia en 5 pasos',
                 style: _landingStyle(
                   context,
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  letterSpacing: 2.4,
-                  color: Colors.white.withValues(alpha: 0.38),
+                  letterSpacing: 2.0,
+                  color: Colors.white.withValues(alpha: 0.55),
                 ),
               ),
               const SizedBox(height: 18),
-              if (isNarrow)
-                SizedBox(
-                  height: 130,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: kAppPitchSteps.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(width: _cardGap),
-                    itemBuilder: (context, i) {
-                      return SizedBox(
-                        width: _scrollCardWidth,
-                        height: 130,
-                        child: _LandingPitchCard(
-                          index: i + 1,
-                          text: kAppPitchSteps[i],
-                        ),
-                      );
-                    },
+              // Siempre carrusel horizontal: evita Row+Expanded+stretch en web (altura 0).
+              SizedBox(
+                height: _stripHeight,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
                   ),
-                )
-              else
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (var i = 0; i < kAppPitchSteps.length; i++) ...[
-                      if (i > 0) const SizedBox(width: _cardGap),
-                      Expanded(
-                        child: _LandingPitchCard(
-                          index: i + 1,
-                          text: kAppPitchSteps[i],
-                        ),
+                  clipBehavior: Clip.none,
+                  itemCount: kAppPitchSteps.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(width: _cardGap),
+                  itemBuilder: (context, i) {
+                    return SizedBox(
+                      width: _cardWidth,
+                      height: _stripHeight,
+                      child: _LandingPitchCard(
+                        index: i + 1,
+                        text: kAppPitchSteps[i],
                       ),
-                    ],
-                  ],
+                    );
+                  },
                 ),
+              ),
             ],
           ),
         ),
