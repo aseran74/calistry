@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:calistenia_app/core/api/api_providers.dart';
 import 'package:calistenia_app/features/auth/presentation/providers/auth_controller.dart';
+import 'package:calistenia_app/features/teachers/presentation/widgets/top_teachers_section.dart';
 
 void _teacherLogout(WidgetRef ref, BuildContext context) async {
   await ref.read(authControllerProvider).logout();
@@ -27,8 +28,10 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
   bool _loading = true;
   Map<String, dynamic>? _teacher;
   Map<String, dynamic>? _link;
+  Map<String, dynamic>? _social;
   List<Map<String, dynamic>> _exercises = const [];
   List<Map<String, dynamic>> _routines = const [];
+  bool _socialBusy = false;
 
   @override
   void initState() {
@@ -51,6 +54,7 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
         isPublic: true,
         limit: 50,
       );
+      final social = await client.getTeacherSocialStats(widget.teacherUserId);
       Map<String, dynamic>? link;
       if (auth.isAuthenticated && !auth.isTeacher) {
         final links = await client.getMyTeacherStudentLinks(asTeacher: false);
@@ -66,6 +70,7 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
         _exercises = exercises;
         _routines = routines;
         _link = link;
+        _social = social;
       });
     } catch (e) {
       if (!mounted) return;
@@ -74,6 +79,94 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
       );
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  int _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  Future<void> _toggleLike() async {
+    final auth = ref.read(authControllerProvider);
+    if (!auth.isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Inicia sesión para dar like.')),
+      );
+      return;
+    }
+    if (auth.isTeacher || auth.isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Solo los alumnos pueden dar like.')),
+      );
+      return;
+    }
+    if (_socialBusy) return;
+    setState(() => _socialBusy = true);
+    try {
+      final liked = await ref
+          .read(apiClientProvider)
+          .toggleTeacherLike(widget.teacherUserId);
+      final stats =
+          await ref.read(apiClientProvider).getTeacherSocialStats(widget.teacherUserId);
+      if (!mounted) return;
+      setState(() {
+        _social = {
+          ...?_social,
+          ...?stats,
+          'liked_by_me': liked,
+        };
+      });
+      ref.invalidate(topTeachersProvider);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _socialBusy = false);
+    }
+  }
+
+  Future<void> _toggleSocialFollow() async {
+    final auth = ref.read(authControllerProvider);
+    if (!auth.isAuthenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Inicia sesión para seguir.')),
+      );
+      return;
+    }
+    if (auth.isTeacher || auth.isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Solo los alumnos pueden seguir.')),
+      );
+      return;
+    }
+    if (_socialBusy) return;
+    setState(() => _socialBusy = true);
+    try {
+      final followed = await ref
+          .read(apiClientProvider)
+          .toggleTeacherFollow(widget.teacherUserId);
+      final stats =
+          await ref.read(apiClientProvider).getTeacherSocialStats(widget.teacherUserId);
+      if (!mounted) return;
+      setState(() {
+        _social = {
+          ...?_social,
+          ...?stats,
+          'followed_by_me': followed,
+        };
+      });
+      ref.invalidate(topTeachersProvider);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _socialBusy = false);
     }
   }
 
@@ -229,6 +322,13 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
                           _MetricChip(
                             label: '${_routines.length} rutinas públicas',
                           ),
+                          _MetricChip(
+                            label:
+                                '${_asInt(_social?['followers_count'])} seguidores',
+                          ),
+                          _MetricChip(
+                            label: '${_asInt(_social?['likes_count'])} likes',
+                          ),
                           if (linkStatus != null)
                             _MetricChip(label: 'Alumno: $linkStatus'),
                         ],
@@ -239,12 +339,43 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
                         runSpacing: 10,
                         children: [
                           if (!isOwnTeacherProfile &&
+                              auth.isAuthenticated &&
+                              !auth.isTeacher)
+                            IconButton.filledTonal(
+                              onPressed: _socialBusy ? null : _toggleLike,
+                              tooltip: _social?['liked_by_me'] == true
+                                  ? 'Quitar like'
+                                  : 'Like',
+                              icon: Icon(
+                                _social?['liked_by_me'] == true
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                              ),
+                            ),
+                          if (!isOwnTeacherProfile &&
+                              auth.isAuthenticated &&
+                              !auth.isTeacher)
+                            FilledButton.tonalIcon(
+                              onPressed:
+                                  _socialBusy ? null : _toggleSocialFollow,
+                              icon: Icon(
+                                _social?['followed_by_me'] == true
+                                    ? Icons.check
+                                    : Icons.person_add_alt_1_outlined,
+                              ),
+                              label: Text(
+                                _social?['followed_by_me'] == true
+                                    ? 'Siguiendo'
+                                    : 'Seguir',
+                              ),
+                            ),
+                          if (!isOwnTeacherProfile &&
                               linkStatus == null &&
                               auth.isAuthenticated &&
                               !auth.isTeacher)
                             FilledButton.icon(
                               onPressed: _requestFollow,
-                              icon: const Icon(Icons.person_add_alt_1),
+                              icon: const Icon(Icons.school_outlined),
                               label: const Text('Solicitar ser alumno'),
                             ),
                           if (linkStatus == 'approved' && !isOwnTeacherProfile)

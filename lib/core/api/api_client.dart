@@ -104,6 +104,38 @@ class ApiClient {
     return _parseListResponse(response, allowEmptySuccess: true);
   }
 
+  Future<List<Map<String, dynamic>>> _databaseRpc(
+    String functionName, {
+    Map<String, dynamic>? args,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$_baseUrl/api/database/rpc/$functionName'),
+      headers: _headers,
+      body: jsonEncode(args ?? const <String, dynamic>{}),
+    );
+    if (response.statusCode >= 400) {
+      throw Exception(_extractErrorMessage(response));
+    }
+    final body = response.body.trim();
+    if (body.isEmpty) return [];
+    final decoded = jsonDecode(body);
+    if (decoded is List) {
+      return decoded
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+    if (decoded is Map<String, dynamic>) {
+      // InsForge a veces devuelve un solo objeto en vez de lista.
+      if (decoded.containsKey('teacher_user_id') ||
+          decoded.containsKey('followers_count')) {
+        return [decoded];
+      }
+      return _parseListResponse(response);
+    }
+    throw Exception('Respuesta RPC no válida del backend.');
+  }
+
   List<Map<String, dynamic>> _parseListResponse(
     http.Response response, {
     bool allowEmptySuccess = false,
@@ -626,6 +658,93 @@ class ApiClient {
           '(display_name.ilike.*${search.trim()}*,specialty.ilike.*${search.trim()}*,bio.ilike.*${search.trim()}*)';
     }
     return _databaseGet('teacher_applications', queryParams: params);
+  }
+
+  /// Top profesores por seguidores sociales (likes/follows independientes del vínculo alumno).
+  Future<List<Map<String, dynamic>>> getTopTeachers({int limit = 10}) async {
+    return _databaseRpc(
+      'get_top_teachers',
+      args: {'p_limit': limit},
+    );
+  }
+
+  Future<Map<String, dynamic>?> getTeacherSocialStats(
+    String teacherUserId,
+  ) async {
+    final list = await _databaseRpc(
+      'get_teacher_social_stats',
+      args: {'p_teacher_user_id': teacherUserId},
+    );
+    if (list.isEmpty) return null;
+    return list.first;
+  }
+
+  /// Toggle like social. Devuelve `true` si quedó liked.
+  Future<bool> toggleTeacherLike(String teacherUserId) async {
+    final userId = _requireUserId();
+    final existing = await _databaseGet(
+      'teacher_likes',
+      queryParams: {
+        'user_id': 'eq.$userId',
+        'teacher_user_id': 'eq.$teacherUserId',
+        'limit': '1',
+      },
+    );
+    if (existing.isNotEmpty) {
+      await _databaseDelete(
+        'teacher_likes',
+        queryParams: {
+          'user_id': 'eq.$userId',
+          'teacher_user_id': 'eq.$teacherUserId',
+        },
+      );
+      return false;
+    }
+    await _databasePost(
+      'teacher_likes',
+      [
+        {
+          'user_id': userId,
+          'teacher_user_id': teacherUserId,
+        }
+      ],
+      returnRepresentation: false,
+    );
+    return true;
+  }
+
+  /// Toggle follow social (sin aprobación). Devuelve `true` si quedó following.
+  Future<bool> toggleTeacherFollow(String teacherUserId) async {
+    final userId = _requireUserId();
+    final existing = await _databaseGet(
+      'teacher_follows',
+      queryParams: {
+        'user_id': 'eq.$userId',
+        'teacher_user_id': 'eq.$teacherUserId',
+        'limit': '1',
+      },
+    );
+    if (existing.isNotEmpty) {
+      await _databaseDelete(
+        'teacher_follows',
+        queryParams: {
+          'user_id': 'eq.$userId',
+          'teacher_user_id': 'eq.$teacherUserId',
+        },
+      );
+      return false;
+    }
+    await _databasePost(
+      'teacher_follows',
+      [
+        {
+          'user_id': userId,
+          'teacher_user_id': teacherUserId,
+        }
+      ],
+      returnRepresentation: false,
+    );
+    return true;
   }
 
   Future<Map<String, dynamic>?> getTeacherProfile(String teacherUserId) async {

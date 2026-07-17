@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:calistenia_app/core/api/api_providers.dart';
+import 'package:calistenia_app/features/teachers/presentation/widgets/top_teachers_section.dart';
 
 class TeachersScreen extends ConsumerStatefulWidget {
   const TeachersScreen({super.key});
@@ -35,6 +36,7 @@ class _TeachersScreenState extends ConsumerState<TeachersScreen> {
           );
       if (!mounted) return;
       setState(() => _teachers = teachers);
+      ref.invalidate(topTeachersProvider);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -59,6 +61,15 @@ class _TeachersScreenState extends ConsumerState<TeachersScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
+            const TopTeachersSection(),
+            const SizedBox(height: 24),
+            Text(
+              'Todos los profesores',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 12),
             TextField(
               controller: _searchController,
               decoration: InputDecoration(

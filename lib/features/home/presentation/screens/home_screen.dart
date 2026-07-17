@@ -13,6 +13,7 @@ import 'package:calistenia_app/features/progress/presentation/providers/progress
 import 'package:calistenia_app/features/routines/domain/models/routine.dart';
 import 'package:calistenia_app/features/routines/presentation/providers/routines_provider.dart';
 import 'package:calistenia_app/features/routines/presentation/widgets/assigned_routine_summary_card.dart';
+import 'package:calistenia_app/features/teachers/presentation/widgets/top_teachers_section.dart';
 
 const _categories = [
   'fuerza',
@@ -71,6 +72,9 @@ class HomeScreen extends ConsumerWidget {
     final statsAsync = ref.watch(userStatsProvider);
     final auth = ref.watch(authControllerProvider);
 
+    final width = MediaQuery.sizeOf(context).width;
+    final isWebWide = width >= 1000;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Calistry'),
@@ -93,335 +97,464 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(assignedRoutinesProvider);
           ref.invalidate(userProgressListProvider);
           ref.invalidate(userStatsProvider);
+          ref.invalidate(topTeachersProvider);
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
-            16,
-            10,
-            16,
+            isWebWide ? 32 : 16,
+            isWebWide ? 24 : 10,
+            isWebWide ? 32 : 16,
             StudentShellLayout.bodyBottomPadding(context),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              progressAsync.when(
-                loading: () => _HeroPanel(
-                  saludo: _saludo(),
-                  totalSemana: 0,
-                  totalSesiones: 0,
-                  tiempoTotal: '0 min',
-                  rachaActual: 0,
-                ),
-                error: (_, __) => _HeroPanel(
-                  saludo: _saludo(),
-                  totalSemana: 0,
-                  totalSesiones: 0,
-                  tiempoTotal: '0 min',
-                  rachaActual: 0,
-                ),
-                data: (progress) {
-                  final now = DateTime.now();
-                  final weekAgo = now.subtract(const Duration(days: 7));
-                  final totalSemana = progress.where((e) {
-                    final at = e.completedAt;
-                    return at != null && !at.isBefore(weekAgo);
-                  }).length;
-
-                  return statsAsync.when(
-                    loading: () => _HeroPanel(
-                      saludo: _saludo(),
-                      totalSemana: totalSemana,
-                      totalSesiones: totalSemana,
-                      tiempoTotal: '0 min',
-                      rachaActual: 0,
-                    ),
-                    error: (_, __) => _HeroPanel(
-                      saludo: _saludo(),
-                      totalSemana: totalSemana,
-                      totalSesiones: totalSemana,
-                      tiempoTotal: '0 min',
-                      rachaActual: 0,
-                    ),
-                    data: (stats) {
-                      final totalSesiones =
-                          stats['total_sesiones'] as int? ?? 0;
-                      final tiempoTotalSegundos =
-                          stats['tiempo_total_segundos'] as int? ?? 0;
-                      final rachaActual = stats['racha_actual'] as int? ?? 0;
-                      return _HeroPanel(
-                        saludo: _saludo(),
-                        totalSemana: totalSemana,
-                        totalSesiones: totalSesiones,
-                        tiempoTotal: _formatDuration(tiempoTotalSegundos),
-                        rachaActual: rachaActual,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 18),
-              const AppPitchStepsPanel(),
-              const SizedBox(height: 18),
-              _ContinuarEntrenamiento(
-                  onTap: () => context.go(StudentShellRoutes.routines)),
-              const SizedBox(height: 10),
-              _CategoryButton(
-                label: 'Planning',
-                icon: Icons.calendar_month_outlined,
-                onTap: () => context.go(StudentShellRoutes.planning),
-              ),
-              if (!auth.isTeacher) ...[
-                const SizedBox(height: 26),
-                const _SectionHeader(
-                  title: 'Asignadas por tu profesor',
-                  subtitle:
-                      'Rutinas privadas que tus profesores han preparado para ti',
-                ),
-                const SizedBox(height: 10),
-                assignedRoutinesAsync.when(
-                  loading: () => const _InfoPanel(
-                    icon: Icons.assignment_outlined,
-                    title: 'Cargando rutinas asignadas',
-                    subtitle: 'Buscando sesiones enviadas por tus profesores.',
-                  ),
-                  error: (_, __) => const SizedBox.shrink(),
-                  data: (assigned) {
-                    if (assigned.isEmpty) {
-                      return const _InfoPanel(
-                        icon: Icons.assignment_outlined,
-                        title: 'Aún no tienes rutinas asignadas',
-                        subtitle:
-                            'Cuando un profesor te envíe una rutina aparecerá aquí.',
-                      );
-                    }
-                    final anyVisible = assigned.any(
-                      (it) => AssignedRoutineSummaryCard.parseRoutine(it) != null,
-                    );
-                    if (!anyVisible) {
-                      return const _InfoPanel(
-                        icon: Icons.assignment_outlined,
-                        title: 'Rutina asignada no accesible',
-                        subtitle:
-                            'Hay asignaciones pero no se pudieron cargar las rutinas.',
-                      );
-                    }
-                    return Column(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1160),
+              child: isWebWide
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left Column (Primary Cockpit)
+                        Expanded(
+                          flex: 11,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildHero(context, ref, progressAsync, statsAsync),
+                              const SizedBox(height: 24),
+                              _ContinuarEntrenamiento(
+                                onTap: () => context.go(StudentShellRoutes.routines),
+                              ),
+                              const SizedBox(height: 12),
+                              _CategoryButton(
+                                label: 'Planning Semanal',
+                                icon: Icons.calendar_month_outlined,
+                                onTap: () => context.go(StudentShellRoutes.planning),
+                              ),
+                              _buildAssignedRoutines(context, ref, assignedRoutinesAsync, auth),
+                              _buildRoutineOfTheDay(context, ref, routinesAsync),
+                              _buildFeatured(context, theme, featuredAsync),
+                              const SizedBox(height: 26),
+                              const TopTeachersSection(),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 32),
+                        // Right Column (Sidebar metrics & quick actions)
+                        Expanded(
+                          flex: 7,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildWeeklyProgress(context, progressAsync, statsAsync),
+                              _buildCategories(context),
+                              _buildCommunity(context, auth),
+                              const SizedBox(height: 24),
+                              const Card(
+                                color: Colors.transparent,
+                                child: AppPitchStepsPanel(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        for (final item in assigned) ...[
-                          AssignedRoutineSummaryCard(
-                            item: Map<String, dynamic>.from(item),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                      ],
-                    );
-                  },
-                ),
-              ],
-              const SizedBox(height: 26),
-              const _SectionHeader(
-                title: 'Rutina del día',
-                subtitle: 'Tu siguiente sesión lista para arrancar',
-              ),
-              const SizedBox(height: 10),
-              routinesAsync.when(
-                loading: () => const _RoutineCardPlaceholder(),
-                error: (_, __) => const SizedBox.shrink(),
-                data: (list) {
-                  final rutinaDelDia = list.isNotEmpty ? list.first : null;
-                  if (rutinaDelDia == null) {
-                    return _EmptyRoutineCard(
-                      onTap: () =>
-                          context.push(StudentShellRoutes.routineCreate),
-                    );
-                  }
-                  return _RutinaDelDiaCard(
-                    routine: rutinaDelDia,
-                    onTap: () => context.push(
-                      StudentShellRoutes.routinePlay(rutinaDelDia.id),
-                      extra: rutinaDelDia,
-                    ),
-                    onMarkDone: () async {
-                      try {
-                        await ref.read(apiClientProvider).saveProgress(
-                              routineId: rutinaDelDia.id,
-                              durationSeconds: null,
-                              notes: null,
-                            );
-                        ref.invalidate(userProgressListProvider);
-                        ref.invalidate(planningSlotsProvider);
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Rutina marcada como hecha'),
-                          ),
-                        );
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                          ),
-                        );
-                      }
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 26),
-              _SectionHeader(
-                title: 'Destacados',
-                subtitle: 'Movimientos clave para mantener el progreso',
-                actionLabel: 'Ver todos',
-                onAction: () => context.go(StudentShellRoutes.exercises),
-              ),
-              const SizedBox(height: 10),
-              featuredAsync.when(
-                loading: () => const SizedBox(
-                  height: 230,
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (e, _) => Text(
-                  'Error: $e',
-                  style: theme.textTheme.bodySmall,
-                ),
-                data: (exercises) {
-                  if (exercises.isEmpty) {
-                    return const _InfoPanel(
-                      icon: Icons.fitness_center,
-                      title: 'No hay ejercicios destacados',
-                      subtitle: 'Cuando cargues más contenido aparecerán aquí.',
-                    );
-                  }
-                  return SizedBox(
-                    height: 230,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: exercises.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 14),
-                      itemBuilder: (context, index) {
-                        final ex = exercises[index];
-                        return SizedBox(
-                          width: 186,
-                          child: ExerciseCard(
-                            exercise: ex,
-                            onTap: () => context.push(
-                              StudentShellRoutes.exerciseDetail(ex.id),
-                              extra: ex,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 26),
-              const _SectionHeader(
-                title: 'Progreso semanal',
-                subtitle: 'Lo que ya has construido en los últimos días',
-              ),
-              const SizedBox(height: 10),
-              progressAsync.when(
-                loading: () => const _ProgressPlaceholder(),
-                error: (_, __) => const SizedBox.shrink(),
-                data: (list) {
-                  final now = DateTime.now();
-                  final weekAgo = now.subtract(const Duration(days: 7));
-                  final thisWeek = list.where((e) {
-                    final at = e.completedAt;
-                    return at != null && !at.isBefore(weekAgo);
-                  }).length;
-                  return statsAsync.when(
-                    loading: () => _ProgresoSemanalCard(
-                      sesionesSemana: thisWeek,
-                      totalSesiones: 0,
-                      rachaActual: 0,
-                    ),
-                    error: (_, __) => _ProgresoSemanalCard(
-                      sesionesSemana: thisWeek,
-                      totalSesiones: 0,
-                      rachaActual: 0,
-                    ),
-                    data: (stats) {
-                      final total = stats['total_sesiones'] as int? ?? 0;
-                      final rachaActual = stats['racha_actual'] as int? ?? 0;
-                      return _ProgresoSemanalCard(
-                        sesionesSemana: thisWeek,
-                        totalSesiones: total,
-                        rachaActual: rachaActual,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 26),
-              const _SectionHeader(
-                title: 'Categorías',
-                subtitle:
-                    'Entra rápido en el tipo de trabajo que te apetece hoy',
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: _categories.map((c) {
-                  final label = _labelCategory(c);
-                  return _CategoryButton(
-                    label: label,
-                    icon: _categoryIcon(c),
-                    onTap: () => context.go(
-                          StudentShellRoutes.exercisesWithCategory(c),
+                        _buildHero(context, ref, progressAsync, statsAsync),
+                        const SizedBox(height: 18),
+                        const AppPitchStepsPanel(),
+                        const SizedBox(height: 18),
+                        _ContinuarEntrenamiento(
+                          onTap: () => context.go(StudentShellRoutes.routines),
                         ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 26),
-              const _SectionHeader(
-                title: 'Comunidad',
-                subtitle:
-                    'Descubre profesores, mensajes y clases activas dentro de la app',
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  if (auth.isTeacher)
-                    _CategoryButton(
-                      label: 'Panel profesor',
-                      icon: Icons.dashboard_customize_outlined,
-                      onTap: () => context.push('/teacher'),
+                        const SizedBox(height: 10),
+                        _CategoryButton(
+                          label: 'Planning',
+                          icon: Icons.calendar_month_outlined,
+                          onTap: () => context.go(StudentShellRoutes.planning),
+                        ),
+                        _buildAssignedRoutines(context, ref, assignedRoutinesAsync, auth),
+                        _buildRoutineOfTheDay(context, ref, routinesAsync),
+                        _buildFeatured(context, theme, featuredAsync),
+                        const SizedBox(height: 26),
+                        const TopTeachersSection(),
+                        _buildWeeklyProgress(context, progressAsync, statsAsync),
+                        _buildCategories(context),
+                        _buildCommunity(context, auth),
+                      ],
                     ),
-                  _CategoryButton(
-                    label: 'Profesores',
-                    icon: Icons.school_outlined,
-                    onTap: () => context.push('/teachers'),
-                  ),
-                  _CategoryButton(
-                    label: 'Mensajes',
-                    icon: Icons.chat_bubble_outline,
-                    onTap: () => context.push('/messages'),
-                  ),
-                  _CategoryButton(
-                    label: 'Directo',
-                    icon: Icons.live_tv_outlined,
-                    onTap: () => context.push('/live-classes'),
-                  ),
-                  if (!auth.isTeacher)
-                    _CategoryButton(
-                      label: 'Ser profesor',
-                      icon: Icons.person_add_alt_1,
-                      onTap: () => context.push('/teacher-application'),
-                    ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildHero(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<dynamic>> progressAsync,
+    AsyncValue<Map<String, dynamic>> statsAsync,
+  ) {
+    return progressAsync.when(
+      loading: () => _HeroPanel(
+        saludo: _saludo(),
+        totalSemana: 0,
+        totalSesiones: 0,
+        tiempoTotal: '0 min',
+        rachaActual: 0,
+      ),
+      error: (_, __) => _HeroPanel(
+        saludo: _saludo(),
+        totalSemana: 0,
+        totalSesiones: 0,
+        tiempoTotal: '0 min',
+        rachaActual: 0,
+      ),
+      data: (progress) {
+        final now = DateTime.now();
+        final weekAgo = now.subtract(const Duration(days: 7));
+        final totalSemana = progress.where((e) {
+          final at = e.completedAt;
+          return at != null && !at.isBefore(weekAgo);
+        }).length;
+
+        return statsAsync.when(
+          loading: () => _HeroPanel(
+            saludo: _saludo(),
+            totalSemana: totalSemana,
+            totalSesiones: totalSemana,
+            tiempoTotal: '0 min',
+            rachaActual: 0,
+          ),
+          error: (_, __) => _HeroPanel(
+            saludo: _saludo(),
+            totalSemana: totalSemana,
+            totalSesiones: totalSemana,
+            tiempoTotal: '0 min',
+            rachaActual: 0,
+          ),
+          data: (stats) {
+            final totalSesiones = stats['total_sesiones'] as int? ?? 0;
+            final tiempoTotalSegundos = stats['tiempo_total_segundos'] as int? ?? 0;
+            final rachaActual = stats['racha_actual'] as int? ?? 0;
+            return _HeroPanel(
+              saludo: _saludo(),
+              totalSemana: totalSemana,
+              totalSesiones: totalSesiones,
+              tiempoTotal: _formatDuration(tiempoTotalSegundos),
+              rachaActual: rachaActual,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAssignedRoutines(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<dynamic>> assignedRoutinesAsync,
+    AuthController auth,
+  ) {
+    if (auth.isTeacher) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 26),
+        const _SectionHeader(
+          title: 'Asignadas por tu profesor',
+          subtitle: 'Rutinas privadas que tus profesores han preparado para ti',
+        ),
+        const SizedBox(height: 10),
+        assignedRoutinesAsync.when(
+          loading: () => const _InfoPanel(
+            icon: Icons.assignment_outlined,
+            title: 'Cargando rutinas asignadas',
+            subtitle: 'Buscando sesiones enviadas por tus profesores.',
+          ),
+          error: (_, __) => const SizedBox.shrink(),
+          data: (assigned) {
+            if (assigned.isEmpty) {
+              return const _InfoPanel(
+                icon: Icons.assignment_outlined,
+                title: 'Aún no tienes rutinas asignadas',
+                subtitle: 'Cuando un profesor te envíe una rutina aparecerá aquí.',
+              );
+            }
+            final anyVisible = assigned.any(
+              (it) => AssignedRoutineSummaryCard.parseRoutine(it) != null,
+            );
+            if (!anyVisible) {
+              return const _InfoPanel(
+                icon: Icons.assignment_outlined,
+                title: 'Rutina asignada no accesible',
+                subtitle: 'Hay asignaciones pero no se pudieron cargar las rutinas.',
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final item in assigned) ...[
+                  AssignedRoutineSummaryCard(
+                    item: Map<String, dynamic>.from(item),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRoutineOfTheDay(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<Routine>> routinesAsync,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 26),
+        const _SectionHeader(
+          title: 'Rutina del día',
+          subtitle: 'Tu siguiente sesión lista para arrancar',
+        ),
+        const SizedBox(height: 10),
+        routinesAsync.when(
+          loading: () => const _RoutineCardPlaceholder(),
+          error: (_, __) => const SizedBox.shrink(),
+          data: (list) {
+            final rutinaDelDia = list.isNotEmpty ? list.first : null;
+            if (rutinaDelDia == null) {
+              return _EmptyRoutineCard(
+                onTap: () => context.push(StudentShellRoutes.routineCreate),
+              );
+            }
+            return _RutinaDelDiaCard(
+              routine: rutinaDelDia,
+              onTap: () => context.push(
+                StudentShellRoutes.routinePlay(rutinaDelDia.id),
+                extra: rutinaDelDia,
+              ),
+              onMarkDone: () async {
+                try {
+                  await ref.read(apiClientProvider).saveProgress(
+                        routineId: rutinaDelDia.id,
+                        durationSeconds: null,
+                        notes: null,
+                      );
+                  ref.invalidate(userProgressListProvider);
+                  ref.invalidate(planningSlotsProvider);
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Rutina marcada como hecha'),
+                    ),
+                  );
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                    ),
+                  );
+                }
+              },
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeatured(
+    BuildContext context,
+    ThemeData theme,
+    AsyncValue<List<dynamic>> featuredAsync,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 26),
+        _SectionHeader(
+          title: 'Destacados',
+          subtitle: 'Movimientos clave para mantener el progreso',
+          actionLabel: 'Ver todos',
+          onAction: () => context.go(StudentShellRoutes.exercises),
+        ),
+        const SizedBox(height: 10),
+        featuredAsync.when(
+          loading: () => const SizedBox(
+            height: 230,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (e, _) => Text(
+            'Error: $e',
+            style: theme.textTheme.bodySmall,
+          ),
+          data: (exercises) {
+            if (exercises.isEmpty) {
+              return const _InfoPanel(
+                icon: Icons.fitness_center,
+                title: 'No hay ejercicios destacados',
+                subtitle: 'Cuando cargues más contenido aparecerán aquí.',
+              );
+            }
+            return SizedBox(
+              height: 230,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: exercises.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 14),
+                itemBuilder: (context, index) {
+                  final ex = exercises[index];
+                  return SizedBox(
+                    width: 186,
+                    child: ExerciseCard(
+                      exercise: ex,
+                      onTap: () => context.push(
+                        StudentShellRoutes.exerciseDetail(ex.id),
+                        extra: ex,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeeklyProgress(
+    BuildContext context,
+    AsyncValue<List<dynamic>> progressAsync,
+    AsyncValue<Map<String, dynamic>> statsAsync,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 26),
+        const _SectionHeader(
+          title: 'Progreso semanal',
+          subtitle: 'Lo que ya has construido en los últimos días',
+        ),
+        const SizedBox(height: 10),
+        progressAsync.when(
+          loading: () => const _ProgressPlaceholder(),
+          error: (_, __) => const SizedBox.shrink(),
+          data: (list) {
+            final now = DateTime.now();
+            final weekAgo = now.subtract(const Duration(days: 7));
+            final thisWeek = list.where((e) {
+              final at = e.completedAt;
+              return at != null && !at.isBefore(weekAgo);
+            }).length;
+            return statsAsync.when(
+              loading: () => _ProgresoSemanalCard(
+                sesionesSemana: thisWeek,
+                totalSesiones: 0,
+                rachaActual: 0,
+              ),
+              error: (_, __) => _ProgresoSemanalCard(
+                sesionesSemana: thisWeek,
+                totalSesiones: 0,
+                rachaActual: 0,
+              ),
+              data: (stats) {
+                final total = stats['total_sesiones'] as int? ?? 0;
+                final rachaActual = stats['racha_actual'] as int? ?? 0;
+                return _ProgresoSemanalCard(
+                  sesionesSemana: thisWeek,
+                  totalSesiones: total,
+                  rachaActual: rachaActual,
+                );
+              },
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategories(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 26),
+        const _SectionHeader(
+          title: 'Categorías',
+          subtitle: 'Entra rápido en el tipo de trabajo que te apetece hoy',
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: _categories.map((c) {
+            final label = _labelCategory(c);
+            return _CategoryButton(
+              label: label,
+              icon: _categoryIcon(c),
+              onTap: () => context.go(
+                StudentShellRoutes.exercisesWithCategory(c),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCommunity(BuildContext context, AuthController auth) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 26),
+        const _SectionHeader(
+          title: 'Comunidad',
+          subtitle: 'Descubre profesores, mensajes y clases activas',
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            if (auth.isTeacher)
+              _CategoryButton(
+                label: 'Panel profesor',
+                icon: Icons.dashboard_customize_outlined,
+                onTap: () => context.push('/teacher'),
+              ),
+            _CategoryButton(
+              label: 'Profesores',
+              icon: Icons.school_outlined,
+              onTap: () => context.push('/teachers'),
+            ),
+            _CategoryButton(
+              label: 'Mensajes',
+              icon: Icons.chat_bubble_outline,
+              onTap: () => context.push('/messages'),
+            ),
+            _CategoryButton(
+              label: 'Directo',
+              icon: Icons.live_tv_outlined,
+              onTap: () => context.push('/live-classes'),
+            ),
+            if (!auth.isTeacher)
+              _CategoryButton(
+                label: 'Ser profesor',
+                icon: Icons.person_add_alt_1,
+                onTap: () => context.push('/teacher-application'),
+              ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -1073,7 +1206,7 @@ class _ProgressMetric extends StatelessWidget {
   }
 }
 
-class _CategoryButton extends StatelessWidget {
+class _CategoryButton extends StatefulWidget {
   const _CategoryButton({
     required this.label,
     required this.icon,
@@ -1085,35 +1218,74 @@ class _CategoryButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_CategoryButton> createState() => _CategoryButtonState();
+}
+
+class _CategoryButtonState extends State<_CategoryButton> {
+  bool _hover = false;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Material(
-      color: theme.colorScheme.surface,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      cursor: SystemMouseCursors.click,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: _hover
+              ? theme.colorScheme.primary.withValues(alpha: 0.08)
+              : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: _hover
+                ? theme.colorScheme.primary.withValues(alpha: 0.3)
+                : theme.colorScheme.outlineVariant,
+          ),
+          boxShadow: _hover
+              ? [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.04),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  )
+                ]
+              : null,
+        ),
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(20),
+          hoverColor: Colors.transparent,
+          splashColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: _hover
+                        ? theme.colorScheme.primary.withValues(alpha: 0.2)
+                        : theme.colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(widget.icon, size: 18, color: theme.colorScheme.primary),
                 ),
-                child: Icon(icon, size: 18, color: theme.colorScheme.primary),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: theme.textTheme.labelLarge,
-              ),
-            ],
+                const SizedBox(width: 12),
+                Text(
+                  widget.label,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: _hover ? FontWeight.bold : FontWeight.w500,
+                    color: _hover ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
