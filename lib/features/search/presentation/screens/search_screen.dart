@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:calistenia_app/core/router/student_shell_routes.dart';
 import 'package:calistenia_app/core/api/api_providers.dart';
+import 'package:calistenia_app/features/exercises/data/exercise_owner_resolver.dart';
 import 'package:calistenia_app/features/exercises/domain/models/exercise.dart';
 import 'package:calistenia_app/features/exercises/presentation/widgets/exercise_card.dart';
 import 'package:calistenia_app/features/routines/domain/models/routine.dart';
@@ -58,9 +59,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           .map((e) => Routine.fromJson(e))
           .where((r) => r.name.toLowerCase().contains(_query.toLowerCase()))
           .toList();
+      final exercises = await mapExercisesWithOwners(client, exList);
       if (!mounted) return;
       setState(() {
-        _exercises = exList.map((e) => Exercise.fromJson(e)).toList();
+        _exercises = exercises;
         _routines = routinesFiltered;
         _searching = false;
       });

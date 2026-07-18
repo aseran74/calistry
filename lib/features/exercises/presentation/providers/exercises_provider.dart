@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:calistenia_app/core/api/api_client.dart';
 import 'package:calistenia_app/core/api/api_providers.dart';
-import 'package:calistenia_app/core/utils/user_display_name.dart';
+import 'package:calistenia_app/features/exercises/data/exercise_owner_resolver.dart';
 import 'package:calistenia_app/features/exercises/domain/models/exercise.dart';
 
 final exercisesSearchQueryProvider = StateProvider<String>((ref) => '');
@@ -24,41 +24,6 @@ class ExercisesNotifier extends StateNotifier<AsyncValue<List<Exercise>>> {
   bool _hasMore = true;
   bool _loadingMore = false;
 
-  Future<List<Exercise>> _mapExercisesWithOwners(
-    List<Map<String, dynamic>> rows,
-  ) async {
-    final ownerIds = rows
-        .map((row) => row['owner_user_id']?.toString())
-        .whereType<String>()
-        .where((id) => id.isNotEmpty)
-        .toSet()
-        .toList();
-    final users = await _client.getUsersByIds(ownerIds);
-    final teachers = await _client.getTeacherProfilesByUserIds(ownerIds);
-    final usersById = {
-      for (final user in users) user['id']?.toString() ?? '': user,
-    };
-    final teachersById = {
-      for (final teacher in teachers)
-        teacher['user_id']?.toString() ?? '': teacher,
-    };
-    return rows.map((row) {
-      final ownerId = row['owner_user_id']?.toString();
-      final teacher = ownerId == null ? null : teachersById[ownerId];
-      final owner = ownerId == null ? null : usersById[ownerId];
-      final teacherName = teacher?['display_name']?.toString().trim() ?? '';
-      return Exercise.fromJson({
-        ...row,
-        'owner_display_name': teacherName.isNotEmpty
-            ? teacherName
-            : userDisplayNameFromJson(
-                owner,
-                fallback: 'Sin profesor',
-              ),
-      });
-    }).toList();
-  }
-
   Future<void> _load({bool reset = true}) async {
     if (reset) {
       _offset = 0;
@@ -74,7 +39,7 @@ class ExercisesNotifier extends StateNotifier<AsyncValue<List<Exercise>>> {
         limit: _pageSize,
         offset: _offset,
       );
-      final exercises = await _mapExercisesWithOwners(list);
+      final exercises = await mapExercisesWithOwners(_client, list);
       if (reset) {
         _all.clear();
         _all.addAll(exercises);
@@ -112,7 +77,7 @@ class ExercisesNotifier extends StateNotifier<AsyncValue<List<Exercise>>> {
         limit: _pageSize,
         offset: _offset,
       );
-      final exercises = await _mapExercisesWithOwners(list);
+      final exercises = await mapExercisesWithOwners(_client, list);
       _all.addAll(exercises);
       _offset += exercises.length.toInt();
       _hasMore = exercises.length >= _pageSize;
@@ -135,26 +100,5 @@ final exerciseDetailProvider =
     FutureProvider.family<Exercise?, String>((ref, id) async {
   final client = ref.watch(apiClientProvider);
   final json = await client.getExercise(id);
-  if (json == null) return null;
-  final ownerId = json['owner_user_id']?.toString();
-  Map<String, dynamic>? owner;
-  Map<String, dynamic>? teacher;
-  if (ownerId != null && ownerId.isNotEmpty) {
-    final results = await Future.wait([
-      client.getUserById(ownerId),
-      client.getTeacherProfile(ownerId),
-    ]);
-    owner = results[0];
-    teacher = results[1];
-  }
-  final teacherName = teacher?['display_name']?.toString().trim() ?? '';
-  return Exercise.fromJson({
-    ...json,
-    'owner_display_name': teacherName.isNotEmpty
-        ? teacherName
-        : userDisplayNameFromJson(
-            owner,
-            fallback: 'Sin profesor',
-          ),
-  });
+  return mapExerciseWithOwner(client, json);
 });

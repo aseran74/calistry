@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:calistenia_app/core/api/api_providers.dart';
+import 'package:calistenia_app/features/exercises/data/exercise_owner_resolver.dart';
 import 'package:calistenia_app/features/exercises/domain/models/exercise.dart';
 
 final currentUserProfileProvider =
@@ -11,5 +12,5 @@ final currentUserProfileProvider =
 final favoriteExercisesProvider = FutureProvider<List<Exercise>>((ref) async {
   final client = ref.watch(apiClientProvider);
   final list = await client.getFavoriteExercises();
-  return list.map((e) => Exercise.fromJson(e)).toList();
+  return mapExercisesWithOwners(client, list);
 });

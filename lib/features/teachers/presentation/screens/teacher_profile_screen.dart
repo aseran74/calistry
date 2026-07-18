@@ -188,6 +188,105 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
     }
   }
 
+  Future<void> _editProfile() async {
+    final displayNameController = TextEditingController(
+      text: _teacher?['display_name']?.toString() ?? '',
+    );
+    final specialtyController = TextEditingController(
+      text: _teacher?['specialty']?.toString() ?? '',
+    );
+    final bioController = TextEditingController(
+      text: _teacher?['bio']?.toString() ?? '',
+    );
+    try {
+      final saved = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Editar perfil'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: displayNameController,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Nombre mostrado',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: specialtyController,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(
+                    labelText: 'Especialidad',
+                    hintText: 'Calistenia, fuerza, movilidad…',
+                    prefixIcon: Icon(Icons.fitness_center_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: bioController,
+                  maxLines: 4,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(
+                    labelText: 'Bio',
+                    alignLabelWithHint: true,
+                    hintText: 'Cuéntales a tus alumnos quién eres.',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Guardar'),
+            ),
+          ],
+        ),
+      );
+      if (saved != true || !mounted) return;
+      final name = displayNameController.text.trim();
+      if (name.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('El nombre mostrado es obligatorio.')),
+        );
+        return;
+      }
+      final updated = await ref.read(apiClientProvider).updateTeacherProfile(
+            displayName: name,
+            specialty: specialtyController.text.trim(),
+            bio: bioController.text.trim(),
+          );
+      if (!mounted) return;
+      if (updated != null) {
+        setState(() => _teacher = updated);
+      } else {
+        await _load();
+      }
+      ref.invalidate(topTeachersProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Perfil actualizado.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      displayNameController.dispose();
+      specialtyController.dispose();
+      bioController.dispose();
+    }
+  }
+
   Future<void> _openChat() async {
     final auth = ref.read(authControllerProvider);
     final userId = auth.session?.user.id;
@@ -218,12 +317,18 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
       appBar: AppBar(
         title: Text(isOwnTeacherProfile ? 'Mi perfil' : 'Perfil del profesor'),
         actions: [
-          if (isOwnTeacherProfile)
+          if (isOwnTeacherProfile) ...[
+            IconButton(
+              tooltip: 'Editar perfil',
+              onPressed: _loading ? null : _editProfile,
+              icon: const Icon(Icons.edit_outlined),
+            ),
             TextButton.icon(
               onPressed: () => _teacherLogout(ref, context),
               icon: const Icon(Icons.logout, size: 20),
               label: const Text('Cerrar sesión'),
             ),
+          ],
         ],
       ),
       body: _loading
@@ -279,11 +384,25 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        _teacher?['display_name']?.toString() ?? 'Profesor',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _teacher?['display_name']?.toString() ??
+                                  'Profesor',
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          if (isOwnTeacherProfile)
+                            IconButton.filledTonal(
+                              tooltip: 'Editar perfil',
+                              onPressed: _editProfile,
+                              icon: const Icon(Icons.edit_outlined),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -304,6 +423,14 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
                               : 'Este profesor todavía no ha añadido bio.';
                         }(),
                       ),
+                      if (isOwnTeacherProfile) ...[
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: _editProfile,
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: const Text('Editar nombre, especialidad y bio'),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       _SocialLinksSection(
                         teacher: _teacher,

@@ -149,7 +149,8 @@ class ExerciseCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  if ((exercise.ownerDisplayName ?? '').trim().isNotEmpty) ...[
+                  if ((exercise.ownerDisplayName ?? '').trim().isNotEmpty ||
+                      (exercise.ownerUserId ?? '').isNotEmpty) ...[
                     const SizedBox(height: 10),
                     InkWell(
                       onTap: (exercise.ownerUserId ?? '').isEmpty
@@ -170,7 +171,7 @@ class ExerciseCard extends StatelessWidget {
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                'Profesor: ${exercise.ownerDisplayName}',
+                                'Profesor: ${(exercise.ownerDisplayName ?? '').trim().isEmpty ? 'Profesor' : exercise.ownerDisplayName}',
                                 style: theme.textTheme.labelMedium?.copyWith(
                                   color: theme.colorScheme.primary,
                                   fontWeight: FontWeight.w700,

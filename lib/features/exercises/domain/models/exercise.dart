@@ -34,25 +34,37 @@ class Exercise {
   });
 
   factory Exercise.fromJson(Map<String, dynamic> json) {
+    String? asNullableString(dynamic value) {
+      final text = value?.toString().trim();
+      if (text == null || text.isEmpty || text == 'null') return null;
+      return text;
+    }
+
+    int? asNullableInt(dynamic value) {
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value?.toString() ?? '');
+    }
+
     return Exercise(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      description: json['description'] as String?,
-      category: json['category'] as String? ?? '',
-      difficulty: json['difficulty'] as String? ?? 'principiante',
+      id: json['id'].toString(),
+      name: json['name']?.toString() ?? '',
+      description: asNullableString(json['description']),
+      category: json['category']?.toString() ?? '',
+      difficulty: json['difficulty']?.toString() ?? 'principiante',
       muscleGroups: (json['muscle_groups'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      videoUrl: json['video_url'] as String?,
-      gifUrl: json['gif_url'] as String?,
-      thumbnailUrl: json['thumbnail_url'] as String?,
-      durationSeconds: json['duration_seconds'] as int?,
-      reps: json['reps'] as int?,
-      sets: json['sets'] as int?,
+      videoUrl: asNullableString(json['video_url']),
+      gifUrl: asNullableString(json['gif_url']),
+      thumbnailUrl: asNullableString(json['thumbnail_url']),
+      durationSeconds: asNullableInt(json['duration_seconds']),
+      reps: asNullableInt(json['reps']),
+      sets: asNullableInt(json['sets']),
       isActive: json['is_active'] as bool? ?? true,
-      ownerUserId: json['owner_user_id'] as String?,
-      ownerDisplayName: json['owner_display_name'] as String?,
+      ownerUserId: asNullableString(json['owner_user_id']),
+      ownerDisplayName: asNullableString(json['owner_display_name']),
     );
   }
 

@@ -775,22 +775,49 @@ class ApiClient {
     );
   }
 
-  /// Actualiza el perfil del profesor (redes sociales). Solo el propio profesor.
+  /// Actualiza el perfil del profesor (nombre, especialidad, bio, redes). Solo el propio profesor.
   Future<Map<String, dynamic>?> updateTeacherProfile({
+    String? displayName,
+    String? specialty,
+    String? bio,
     String? instagramUrl,
     String? tiktokUrl,
     String? facebookUrl,
   }) async {
     final userId = _requireUserId();
     final body = <String, dynamic>{};
-    if (instagramUrl != null) body['instagram_url'] = instagramUrl.isEmpty ? null : instagramUrl;
-    if (tiktokUrl != null) body['tiktok_url'] = tiktokUrl.isEmpty ? null : tiktokUrl;
-    if (facebookUrl != null) body['facebook_url'] = facebookUrl.isEmpty ? null : facebookUrl;
+    if (displayName != null) {
+      final value = displayName.trim();
+      if (value.isEmpty) {
+        throw Exception('El nombre mostrado no puede estar vacío.');
+      }
+      body['display_name'] = value;
+    }
+    if (specialty != null) {
+      body['specialty'] = specialty.trim().isEmpty ? null : specialty.trim();
+    }
+    if (bio != null) {
+      body['bio'] = bio.trim().isEmpty ? null : bio.trim();
+    }
+    if (instagramUrl != null) {
+      body['instagram_url'] =
+          instagramUrl.isEmpty ? null : instagramUrl.trim();
+    }
+    if (tiktokUrl != null) {
+      body['tiktok_url'] = tiktokUrl.isEmpty ? null : tiktokUrl.trim();
+    }
+    if (facebookUrl != null) {
+      body['facebook_url'] =
+          facebookUrl.isEmpty ? null : facebookUrl.trim();
+    }
     if (body.isEmpty) return getTeacherProfile(userId);
     final updated = await _databasePatch(
       'teacher_applications',
       body,
-      queryParams: {'user_id': 'eq.$userId'},
+      queryParams: {
+        'user_id': 'eq.$userId',
+        'status': 'eq.approved',
+      },
     );
     if (updated.isEmpty) return null;
     return updated.first;
