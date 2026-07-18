@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import 'package:calistenia_app/features/exercises/presentation/providers/exercises_provider.dart';
 import 'package:calistenia_app/core/api/api_providers.dart';
 import 'package:calistenia_app/core/theme/theme.dart';
@@ -199,13 +200,6 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                                         _DetailBadge(
                                           label: '${exercise.sets} series',
                                         ),
-                                      if ((exercise.ownerDisplayName ?? '')
-                                          .trim()
-                                          .isNotEmpty)
-                                        _DetailBadge(
-                                          label:
-                                              'Usuario: ${exercise.ownerDisplayName}',
-                                        ),
                                       if (exercise.muscleGroups.isNotEmpty)
                                         _DetailBadge(
                                           label:
@@ -213,6 +207,39 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                                         ),
                                     ],
                                   ),
+                                  if ((exercise.ownerDisplayName ?? '')
+                                      .trim()
+                                      .isNotEmpty) ...[
+                                    const SizedBox(height: 12),
+                                    InkWell(
+                                      onTap:
+                                          (exercise.ownerUserId ?? '').isEmpty
+                                              ? null
+                                              : () => context.push(
+                                                    '/teachers/${exercise.ownerUserId}',
+                                                  ),
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.school_outlined,
+                                            size: 18,
+                                            color: theme.colorScheme.primary,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Profesor: ${exercise.ownerDisplayName}',
+                                            style: theme.textTheme.labelLarge
+                                                ?.copyWith(
+                                              color: theme.colorScheme.primary,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -250,6 +277,29 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      if ((exercise.ownerDisplayName ?? '')
+                          .trim()
+                          .isNotEmpty) ...[
+                        Card(
+                          child: ListTile(
+                            leading: Icon(
+                              Icons.school_outlined,
+                              color: theme.colorScheme.primary,
+                            ),
+                            title: const Text('Profesor'),
+                            subtitle: Text(exercise.ownerDisplayName!),
+                            trailing: (exercise.ownerUserId ?? '').isEmpty
+                                ? null
+                                : const Icon(Icons.chevron_right_rounded),
+                            onTap: (exercise.ownerUserId ?? '').isEmpty
+                                ? null
+                                : () => context.push(
+                                      '/teachers/${exercise.ownerUserId}',
+                                    ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
                       if (exercise.videoUrl != null && exercise.videoUrl!.trim().isNotEmpty) ...[
                         Card(
                           clipBehavior: Clip.antiAlias,

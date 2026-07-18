@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 import 'package:calistenia_app/features/exercises/domain/exercise_metadata.dart';
 import 'package:calistenia_app/features/exercises/domain/models/exercise.dart';
 import 'package:calistenia_app/core/theme/theme.dart';
@@ -150,11 +151,36 @@ class ExerciseCard extends StatelessWidget {
                     ),
                   if ((exercise.ownerDisplayName ?? '').trim().isNotEmpty) ...[
                     const SizedBox(height: 10),
-                    Text(
-                      'Usuario: ${exercise.ownerDisplayName}',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
+                    InkWell(
+                      onTap: (exercise.ownerUserId ?? '').isEmpty
+                          ? null
+                          : () => context.push(
+                                '/teachers/${exercise.ownerUserId}',
+                              ),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.school_outlined,
+                              size: 16,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Profesor: ${exercise.ownerDisplayName}',
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],

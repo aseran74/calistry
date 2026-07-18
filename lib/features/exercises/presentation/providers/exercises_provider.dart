@@ -34,18 +34,27 @@ class ExercisesNotifier extends StateNotifier<AsyncValue<List<Exercise>>> {
         .toSet()
         .toList();
     final users = await _client.getUsersByIds(ownerIds);
+    final teachers = await _client.getTeacherProfilesByUserIds(ownerIds);
     final usersById = {
       for (final user in users) user['id']?.toString() ?? '': user,
     };
+    final teachersById = {
+      for (final teacher in teachers)
+        teacher['user_id']?.toString() ?? '': teacher,
+    };
     return rows.map((row) {
       final ownerId = row['owner_user_id']?.toString();
+      final teacher = ownerId == null ? null : teachersById[ownerId];
       final owner = ownerId == null ? null : usersById[ownerId];
+      final teacherName = teacher?['display_name']?.toString().trim() ?? '';
       return Exercise.fromJson({
         ...row,
-        'owner_display_name': userDisplayNameFromJson(
-          owner,
-          fallback: 'Sin asignar',
-        ),
+        'owner_display_name': teacherName.isNotEmpty
+            ? teacherName
+            : userDisplayNameFromJson(
+                owner,
+                fallback: 'Sin profesor',
+              ),
       });
     }).toList();
   }
@@ -129,14 +138,23 @@ final exerciseDetailProvider =
   if (json == null) return null;
   final ownerId = json['owner_user_id']?.toString();
   Map<String, dynamic>? owner;
+  Map<String, dynamic>? teacher;
   if (ownerId != null && ownerId.isNotEmpty) {
-    owner = await client.getUserById(ownerId);
+    final results = await Future.wait([
+      client.getUserById(ownerId),
+      client.getTeacherProfile(ownerId),
+    ]);
+    owner = results[0];
+    teacher = results[1];
   }
+  final teacherName = teacher?['display_name']?.toString().trim() ?? '';
   return Exercise.fromJson({
     ...json,
-    'owner_display_name': userDisplayNameFromJson(
-      owner,
-      fallback: 'Sin asignar',
-    ),
+    'owner_display_name': teacherName.isNotEmpty
+        ? teacherName
+        : userDisplayNameFromJson(
+            owner,
+            fallback: 'Sin profesor',
+          ),
   });
 });

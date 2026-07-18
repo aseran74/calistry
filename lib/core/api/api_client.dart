@@ -760,6 +760,21 @@ class ApiClient {
     return list.first;
   }
 
+  /// Perfiles de profesor aprobados por ids de usuario.
+  Future<List<Map<String, dynamic>>> getTeacherProfilesByUserIds(
+    List<String> userIds,
+  ) async {
+    final ids = userIds.where((id) => id.isNotEmpty).toSet().toList();
+    if (ids.isEmpty) return [];
+    return _databaseGet(
+      'teacher_applications',
+      queryParams: {
+        'user_id': 'in.(${ids.join(',')})',
+        'status': 'eq.approved',
+      },
+    );
+  }
+
   /// Actualiza el perfil del profesor (redes sociales). Solo el propio profesor.
   Future<Map<String, dynamic>?> updateTeacherProfile({
     String? instagramUrl,
