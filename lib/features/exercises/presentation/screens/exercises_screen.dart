@@ -78,7 +78,6 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
     final durationController = TextEditingController();
     final repsController = TextEditingController();
     final setsController = TextEditingController();
-    final gifController = TextEditingController();
     final videoController = TextEditingController();
     final thumbnailController = TextEditingController();
     var category = exerciseCategories.first;
@@ -112,9 +111,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                             int.tryParse(durationController.text.trim()),
                         reps: int.tryParse(repsController.text.trim()),
                         sets: int.tryParse(setsController.text.trim()),
-                        gifUrl: gifController.text.trim().isEmpty
-                            ? null
-                            : gifController.text.trim(),
+                        gifUrl: null,
                         videoUrl: videoController.text.trim().isEmpty
                             ? null
                             : videoController.text.trim(),
@@ -232,21 +229,17 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                         ),
                         const SizedBox(height: 12),
                         TextField(
-                          controller: gifController,
-                          decoration:
-                              const InputDecoration(labelText: 'GIF URL'),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
                           controller: videoController,
-                          decoration:
-                              const InputDecoration(labelText: 'Video URL'),
+                          decoration: const InputDecoration(
+                            labelText: 'Vídeo URL (mp4/webm)',
+                            hintText: 'Se reproduce en bucle sin sonido',
+                          ),
                         ),
                         const SizedBox(height: 12),
                         TextField(
                           controller: thumbnailController,
                           decoration: const InputDecoration(
-                            labelText: 'Thumbnail URL',
+                            labelText: 'Thumbnail URL (opcional)',
                           ),
                         ),
                       ],
@@ -277,7 +270,6 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
       durationController.dispose();
       repsController.dispose();
       setsController.dispose();
-      gifController.dispose();
       videoController.dispose();
       thumbnailController.dispose();
     }

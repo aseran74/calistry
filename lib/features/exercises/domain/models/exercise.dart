@@ -68,6 +68,10 @@ class Exercise {
     );
   }
 
-  /// URL para mostrar como imagen (solo GIF o thumbnail; no incluye video).
+  /// Imagen estática de respaldo (GIF o thumbnail). Preferir [videoUrl] en UI.
   String get imageUrl => gifUrl ?? thumbnailUrl ?? '';
+
+  /// Hay medio visual: vídeo (preferido) o imagen.
+  bool get hasMedia =>
+      (videoUrl ?? '').trim().isNotEmpty || imageUrl.trim().isNotEmpty;
 }

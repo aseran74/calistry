@@ -636,7 +636,6 @@ class _CreateExerciseDialogContentState
   late final TextEditingController _durationController;
   late final TextEditingController _repsController;
   late final TextEditingController _setsController;
-  late final TextEditingController _gifController;
   late final TextEditingController _videoController;
   late final TextEditingController _thumbnailController;
   late String _category;
@@ -652,7 +651,6 @@ class _CreateExerciseDialogContentState
     _durationController = TextEditingController();
     _repsController = TextEditingController();
     _setsController = TextEditingController();
-    _gifController = TextEditingController();
     _videoController = TextEditingController();
     _thumbnailController = TextEditingController();
     _category = exerciseCategories.first;
@@ -667,7 +665,6 @@ class _CreateExerciseDialogContentState
     _durationController.dispose();
     _repsController.dispose();
     _setsController.dispose();
-    _gifController.dispose();
     _videoController.dispose();
     _thumbnailController.dispose();
     super.dispose();
@@ -693,9 +690,7 @@ class _CreateExerciseDialogContentState
             durationSeconds: int.tryParse(_durationController.text.trim()),
             reps: int.tryParse(_repsController.text.trim()),
             sets: int.tryParse(_setsController.text.trim()),
-            gifUrl: _gifController.text.trim().isEmpty
-                ? null
-                : _gifController.text.trim(),
+            gifUrl: null,
             videoUrl: _videoController.text.trim().isEmpty
                 ? null
                 : _videoController.text.trim(),
@@ -802,18 +797,18 @@ class _CreateExerciseDialogContentState
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: _gifController,
-              decoration: const InputDecoration(labelText: 'GIF URL'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
               controller: _videoController,
-              decoration: const InputDecoration(labelText: 'Video URL'),
+              decoration: const InputDecoration(
+                labelText: 'Vídeo URL (mp4/webm)',
+                hintText: 'Se reproduce en bucle sin sonido en la app',
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _thumbnailController,
-              decoration: const InputDecoration(labelText: 'Thumbnail URL'),
+              decoration: const InputDecoration(
+                labelText: 'Thumbnail URL (opcional)',
+              ),
             ),
           ],
         ),

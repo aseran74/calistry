@@ -1118,21 +1118,30 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextField(
-                        controller: gifController,
-                        decoration: const InputDecoration(labelText: 'GIF URL'),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
                         controller: videoController,
-                        decoration:
-                            const InputDecoration(labelText: 'Video URL'),
+                        decoration: const InputDecoration(
+                          labelText: 'Vídeo URL (mp4/webm)',
+                          hintText: 'Preferible subir desde Media; autoplay en la app',
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: thumbnailController,
-                        decoration:
-                            const InputDecoration(labelText: 'Thumbnail URL'),
+                        decoration: const InputDecoration(
+                          labelText: 'Thumbnail URL (opcional)',
+                        ),
                       ),
+                      // Se mantiene el controller de GIF por compatibilidad con datos antiguos.
+                      if (gifController.text.trim().isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: gifController,
+                          readOnly: true,
+                          decoration: const InputDecoration(
+                            labelText: 'GIF antiguo (solo lectura)',
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         initialValue: ownerOptions.any(
@@ -2133,50 +2142,35 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: _MediaBlock(
-                            title: 'GIF',
-                            value: gifUrl,
-                            emptyText: 'Este ejercicio todavía no tiene GIF.',
-                            onUpload: () => _uploadExerciseAsset(
-                              exercise: exercise,
-                              field: 'gif_url',
-                              label: 'GIF',
-                              allowedExtensions: const [
-                                'gif',
-                                'webp',
-                                'png',
-                                'jpg',
-                                'jpeg'
-                              ],
-                            ),
-                            onCopy:
-                                gifUrl.isEmpty ? null : () => _copyText(gifUrl),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _MediaBlock(
-                            title: 'Video',
-                            value: videoUrl,
-                            emptyText: 'Este ejercicio todavía no tiene vídeo.',
-                            onUpload: () => _uploadExerciseAsset(
-                              exercise: exercise,
-                              field: 'video_url',
-                              label: 'Vídeo',
-                              allowedExtensions: const ['mp4', 'webm', 'mov'],
-                            ),
-                            onCopy: videoUrl.isEmpty
-                                ? null
-                                : () => _copyText(videoUrl),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Solo se sube vídeo (mp4/webm/mov). Se muestra en autoplay sin sonido en la app.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.white70,
+                      ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
+                    _MediaBlock(
+                      title: 'Vídeo',
+                      value: videoUrl,
+                      emptyText: 'Este ejercicio todavía no tiene vídeo.',
+                      onUpload: () => _uploadExerciseAsset(
+                        exercise: exercise,
+                        field: 'video_url',
+                        label: 'Vídeo',
+                        allowedExtensions: const ['mp4', 'webm', 'mov'],
+                      ),
+                      onCopy: videoUrl.isEmpty
+                          ? null
+                          : () => _copyText(videoUrl),
+                    ),
+                    if (gifUrl.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      _MiniMeta(
+                        label: 'GIF antiguo (solo lectura)',
+                        value: gifUrl,
+                      ),
+                    ],
+                    const SizedBox(height: 10),
                     _MiniMeta(
                       label: 'Thumbnail',
                       value: thumbUrl.isEmpty ? '-' : thumbUrl,
@@ -2185,7 +2179,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     OutlinedButton(
                       onPressed: () =>
                           _createOrEditExercise(exercise: exercise),
-                      child: const Text('Editar URLs manualmente'),
+                      child: const Text('Editar datos del ejercicio'),
                     ),
                   ],
                 ),

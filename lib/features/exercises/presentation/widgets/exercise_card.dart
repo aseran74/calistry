@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:calistenia_app/features/exercises/domain/exercise_metadata.dart';
 import 'package:calistenia_app/features/exercises/domain/models/exercise.dart';
+import 'package:calistenia_app/features/exercises/presentation/widgets/exercise_media_preview.dart';
 import 'package:calistenia_app/core/theme/theme.dart';
 
 class ExerciseCard extends StatelessWidget {
@@ -33,19 +33,14 @@ class ExerciseCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  exercise.imageUrl.isNotEmpty
-                      ? Hero(
-                          tag: 'exercise-${exercise.id}',
-                          child: CachedNetworkImage(
-                            imageUrl: exercise.imageUrl,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                            errorWidget: (_, __, ___) => _placeholder(theme),
-                          ),
-                        )
-                      : _placeholder(theme),
+                  IgnorePointer(
+                    child: ExerciseMediaPreview(
+                      exercise: exercise,
+                      aspectRatio: 1.02,
+                      heroTag: 'exercise-${exercise.id}',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                   DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -213,26 +208,6 @@ class ExerciseCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _placeholder(ThemeData theme) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            theme.colorScheme.surfaceContainerHighest,
-            theme.colorScheme.surface,
-          ],
-        ),
-      ),
-      child: Icon(
-        Icons.fitness_center,
-        size: 48,
-        color: theme.colorScheme.outline,
       ),
     );
   }

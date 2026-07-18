@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:calistenia_app/features/exercises/presentation/providers/exercises_provider.dart';
 import 'package:calistenia_app/core/api/api_providers.dart';
 import 'package:calistenia_app/core/theme/theme.dart';
 import 'package:calistenia_app/features/exercises/domain/exercise_metadata.dart';
 import 'package:calistenia_app/features/exercises/domain/models/exercise.dart';
+import 'package:calistenia_app/features/exercises/presentation/widgets/exercise_media_preview.dart';
 import 'package:calistenia_app/features/exercises/presentation/widgets/exercise_video_player.dart';
 
 class ExerciseDetailScreen extends ConsumerStatefulWidget {
@@ -92,16 +92,15 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                   const SizedBox(width: 8),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
-                  background: (exercise.gifUrl ?? exercise.thumbnailUrl ?? '').trim().isNotEmpty
+                  background: exercise.hasMedia
                       ? Stack(
                           fit: StackFit.expand,
                           children: [
-                            Hero(
-                              tag: 'exercise-${exercise.id}',
-                              child: CachedNetworkImage(
-                                imageUrl: exercise.gifUrl ?? exercise.thumbnailUrl ?? '',
-                                fit: BoxFit.cover,
-                              ),
+                            ExerciseMediaPreview(
+                              exercise: exercise,
+                              aspectRatio: 16 / 9,
+                              heroTag: 'exercise-${exercise.id}',
+                              fit: BoxFit.cover,
                             ),
                             const DecoratedBox(
                               decoration: BoxDecoration(
@@ -300,7 +299,21 @@ class _ExerciseDetailScreenState extends ConsumerState<ExerciseDetailScreen> {
                         ),
                         const SizedBox(height: 14),
                       ],
-                      if (exercise.videoUrl != null && exercise.videoUrl!.trim().isNotEmpty) ...[
+                      if ((exercise.videoUrl ?? '').trim().isNotEmpty) ...[
+                        Text(
+                          'Vídeo del ejercicio',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'En la cabecera se reproduce en bucle sin sonido. Aquí puedes controlarlo con audio.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
                         Card(
                           clipBehavior: Clip.antiAlias,
                           child: ExerciseVideoPlayer(
