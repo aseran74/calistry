@@ -611,6 +611,9 @@ class ApiClient {
     String? specialty,
     String? bio,
     String? motivation,
+    String? instagramUrl,
+    String? tiktokUrl,
+    String? facebookUrl,
   }) async {
     final userId = _requireUserId();
     final existing = await getMyTeacherApplication();
@@ -619,6 +622,18 @@ class ApiClient {
       'specialty': specialty,
       'bio': bio,
       'motivation': motivation,
+      'instagram_url':
+          (instagramUrl == null || instagramUrl.trim().isEmpty)
+              ? null
+              : instagramUrl.trim(),
+      'tiktok_url':
+          (tiktokUrl == null || tiktokUrl.trim().isEmpty)
+              ? null
+              : tiktokUrl.trim(),
+      'facebook_url':
+          (facebookUrl == null || facebookUrl.trim().isEmpty)
+              ? null
+              : facebookUrl.trim(),
       'status': 'pending',
       'review_notes': null,
       'reviewed_by_user_id': null,

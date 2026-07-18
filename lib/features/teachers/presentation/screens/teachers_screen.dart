@@ -114,16 +114,51 @@ class _TeachersScreenState extends ConsumerState<TeachersScreen> {
                       ),
                       subtitle: Padding(
                         padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          [
-                            if (teacher['specialty']?.toString().isNotEmpty ==
-                                true)
-                              teacher['specialty'].toString(),
-                            if (teacher['bio']?.toString().isNotEmpty == true)
-                              teacher['bio'].toString(),
-                          ].join(' · '),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              [
+                                if (teacher['specialty']
+                                        ?.toString()
+                                        .isNotEmpty ==
+                                    true)
+                                  teacher['specialty'].toString(),
+                                if (teacher['bio']?.toString().isNotEmpty ==
+                                    true)
+                                  teacher['bio'].toString(),
+                              ].join(' · '),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (_hasSocial(teacher)) ...[
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: [
+                                  if (_socialUrl(teacher, 'instagram_url')
+                                      .isNotEmpty)
+                                    const _TeacherSocialChip(
+                                      label: 'Instagram',
+                                      icon: Icons.camera_alt_outlined,
+                                    ),
+                                  if (_socialUrl(teacher, 'tiktok_url')
+                                      .isNotEmpty)
+                                    const _TeacherSocialChip(
+                                      label: 'TikTok',
+                                      icon: Icons.videocam_outlined,
+                                    ),
+                                  if (_socialUrl(teacher, 'facebook_url')
+                                      .isNotEmpty)
+                                    const _TeacherSocialChip(
+                                      label: 'Facebook',
+                                      icon: Icons.facebook,
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                       trailing: const Icon(Icons.chevron_right_rounded),
@@ -136,6 +171,52 @@ class _TeachersScreenState extends ConsumerState<TeachersScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+bool _hasSocial(Map<String, dynamic> teacher) {
+  return _socialUrl(teacher, 'instagram_url').isNotEmpty ||
+      _socialUrl(teacher, 'tiktok_url').isNotEmpty ||
+      _socialUrl(teacher, 'facebook_url').isNotEmpty;
+}
+
+String _socialUrl(Map<String, dynamic> teacher, String key) {
+  return teacher[key]?.toString().trim() ?? '';
+}
+
+class _TeacherSocialChip extends StatelessWidget {
+  const _TeacherSocialChip({
+    required this.label,
+    required this.icon,
+  });
+
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: theme.colorScheme.primary),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

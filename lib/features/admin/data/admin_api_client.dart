@@ -342,6 +342,21 @@ class AdminApiClient {
     return updated.isEmpty ? null : updated.first;
   }
 
+  /// Actualiza el perfil público del profesor (admin/moderator).
+  Future<Map<String, dynamic>?> updateTeacherApplication({
+    required String accessToken,
+    required String applicationId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final updated = await _databasePatch(
+      'teacher_applications',
+      accessToken: accessToken,
+      body: payload,
+      queryParameters: {'id': 'eq.$applicationId'},
+    );
+    return updated.isEmpty ? null : updated.first;
+  }
+
   Future<Map<String, dynamic>?> approveTeacherApplication({
     required String accessToken,
     required String reviewerUserId,

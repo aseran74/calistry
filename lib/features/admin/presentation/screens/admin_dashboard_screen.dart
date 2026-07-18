@@ -445,6 +445,255 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     );
   }
 
+  Future<void> _editTeacherApplication(
+    Map<String, dynamic> application,
+  ) async {
+    final session = ref.read(authControllerProvider).session;
+    if (session == null) return;
+
+    final displayNameController = TextEditingController(
+      text: application['display_name']?.toString() ?? '',
+    );
+    final specialtyController = TextEditingController(
+      text: application['specialty']?.toString() ?? '',
+    );
+    final bioController = TextEditingController(
+      text: application['bio']?.toString() ?? '',
+    );
+    final motivationController = TextEditingController(
+      text: application['motivation']?.toString() ?? '',
+    );
+    final reviewNotesController = TextEditingController(
+      text: application['review_notes']?.toString() ?? '',
+    );
+    final instagramController = TextEditingController(
+      text: application['instagram_url']?.toString() ?? '',
+    );
+    final tiktokController = TextEditingController(
+      text: application['tiktok_url']?.toString() ?? '',
+    );
+    final facebookController = TextEditingController(
+      text: application['facebook_url']?.toString() ?? '',
+    );
+    final currentStatus = application['status']?.toString() ?? 'pending';
+    var status = currentStatus;
+
+    try {
+      final payload = await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setLocalState) {
+              return AlertDialog(
+                title: const Text('Editar profesor'),
+                content: SizedBox(
+                  width: 520,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          controller: displayNameController,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            labelText: 'Nombre mostrado',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: specialtyController,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(
+                            labelText: 'Especialidad',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: bioController,
+                          minLines: 3,
+                          maxLines: 5,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(
+                            labelText: 'Bio',
+                            alignLabelWithHint: true,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: motivationController,
+                          minLines: 2,
+                          maxLines: 4,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(
+                            labelText: 'Motivación',
+                            alignLabelWithHint: true,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Redes sociales',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        TextField(
+                          controller: instagramController,
+                          keyboardType: TextInputType.url,
+                          decoration: const InputDecoration(
+                            labelText: 'Instagram',
+                            hintText: 'https://instagram.com/usuario',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: tiktokController,
+                          keyboardType: TextInputType.url,
+                          decoration: const InputDecoration(
+                            labelText: 'TikTok',
+                            hintText: 'https://tiktok.com/@usuario',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: facebookController,
+                          keyboardType: TextInputType.url,
+                          decoration: const InputDecoration(
+                            labelText: 'Facebook',
+                            hintText: 'https://facebook.com/pagina',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          initialValue: status,
+                          decoration: const InputDecoration(
+                            labelText: 'Estado',
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'pending',
+                              child: Text('pending'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'approved',
+                              child: Text('approved'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'rejected',
+                              child: Text('rejected'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value == null) return;
+                            setLocalState(() => status = value);
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: reviewNotesController,
+                          minLines: 2,
+                          maxLines: 4,
+                          decoration: const InputDecoration(
+                            labelText: 'Notas de revisión',
+                            alignLabelWithHint: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancelar'),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      final name = displayNameController.text.trim();
+                      if (name.isEmpty) return;
+                      String? urlOrNull(String value) {
+                        final trimmed = value.trim();
+                        return trimmed.isEmpty ? null : trimmed;
+                      }
+
+                      Navigator.of(context).pop(<String, dynamic>{
+                        'display_name': name,
+                        'specialty': specialtyController.text.trim().isEmpty
+                            ? null
+                            : specialtyController.text.trim(),
+                        'bio': bioController.text.trim().isEmpty
+                            ? null
+                            : bioController.text.trim(),
+                        'motivation': motivationController.text.trim().isEmpty
+                            ? null
+                            : motivationController.text.trim(),
+                        'instagram_url':
+                            urlOrNull(instagramController.text),
+                        'tiktok_url': urlOrNull(tiktokController.text),
+                        'facebook_url': urlOrNull(facebookController.text),
+                        'status': status,
+                        'review_notes':
+                            reviewNotesController.text.trim().isEmpty
+                                ? null
+                                : reviewNotesController.text.trim(),
+                        if (status != currentStatus)
+                          'reviewed_by_user_id': session.user.id,
+                        if (status != currentStatus)
+                          'reviewed_at':
+                              DateTime.now().toUtc().toIso8601String(),
+                      });
+                    },
+                    child: const Text('Guardar'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+      if (payload == null) return;
+
+      await _runMutation(
+        message: 'Profesor actualizado',
+        action: () async {
+          final api = ref.read(adminApiClientProvider);
+          final nextStatus = payload['status']?.toString();
+          if (nextStatus == 'approved' && currentStatus != 'approved') {
+            await api.updateUser(
+              accessToken: session.accessToken,
+              userId: application['user_id'].toString(),
+              payload: {'role': 'teacher'},
+            );
+          } else if (nextStatus == 'rejected' && currentStatus != 'rejected') {
+            await api.updateUser(
+              accessToken: session.accessToken,
+              userId: application['user_id'].toString(),
+              payload: {'role': 'user'},
+            );
+          }
+          return api.updateTeacherApplication(
+            accessToken: session.accessToken,
+            applicationId: application['id'].toString(),
+            payload: payload,
+          );
+        },
+      );
+    } finally {
+      displayNameController.dispose();
+      specialtyController.dispose();
+      bioController.dispose();
+      motivationController.dispose();
+      reviewNotesController.dispose();
+      instagramController.dispose();
+      tiktokController.dispose();
+      facebookController.dispose();
+    }
+  }
+
   Future<void> _approveTeacherApplication(
       Map<String, dynamic> application) async {
     final session = ref.read(authControllerProvider).session;
@@ -2290,11 +2539,38 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                       'Review: ${application['review_notes']?.toString().isNotEmpty == true ? application['review_notes'] : '-'}',
                       style: theme.textTheme.bodyMedium,
                     ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Instagram: ${application['instagram_url']?.toString().trim().isNotEmpty == true ? application['instagram_url'] : '-'}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'TikTok: ${application['tiktok_url']?.toString().trim().isNotEmpty == true ? application['tiktok_url'] : '-'}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Facebook: ${application['facebook_url']?.toString().trim().isNotEmpty == true ? application['facebook_url'] : '-'}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.white70,
+                      ),
+                    ),
                     const SizedBox(height: 14),
                     Wrap(
                       spacing: 10,
                       runSpacing: 10,
                       children: [
+                        FilledButton.tonalIcon(
+                          onPressed: () =>
+                              _editTeacherApplication(application),
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: const Text('Editar'),
+                        ),
                         if (status == 'pending')
                           FilledButton(
                             onPressed: () =>

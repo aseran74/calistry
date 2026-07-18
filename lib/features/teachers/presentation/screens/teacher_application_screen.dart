@@ -17,6 +17,9 @@ class _TeacherApplicationScreenState
   final _specialtyController = TextEditingController();
   final _bioController = TextEditingController();
   final _motivationController = TextEditingController();
+  final _instagramController = TextEditingController();
+  final _tiktokController = TextEditingController();
+  final _facebookController = TextEditingController();
 
   bool _loading = true;
   bool _saving = false;
@@ -34,6 +37,9 @@ class _TeacherApplicationScreenState
     _specialtyController.dispose();
     _bioController.dispose();
     _motivationController.dispose();
+    _instagramController.dispose();
+    _tiktokController.dispose();
+    _facebookController.dispose();
     super.dispose();
   }
 
@@ -51,6 +57,11 @@ class _TeacherApplicationScreenState
       _specialtyController.text = application?['specialty']?.toString() ?? '';
       _bioController.text = application?['bio']?.toString() ?? '';
       _motivationController.text = application?['motivation']?.toString() ?? '';
+      _instagramController.text =
+          application?['instagram_url']?.toString() ?? '';
+      _tiktokController.text = application?['tiktok_url']?.toString() ?? '';
+      _facebookController.text =
+          application?['facebook_url']?.toString() ?? '';
       setState(() {});
     } catch (e) {
       if (!mounted) return;
@@ -77,6 +88,15 @@ class _TeacherApplicationScreenState
             motivation: _motivationController.text.trim().isEmpty
                 ? null
                 : _motivationController.text.trim(),
+            instagramUrl: _instagramController.text.trim().isEmpty
+                ? null
+                : _instagramController.text.trim(),
+            tiktokUrl: _tiktokController.text.trim().isEmpty
+                ? null
+                : _tiktokController.text.trim(),
+            facebookUrl: _facebookController.text.trim().isEmpty
+                ? null
+                : _facebookController.text.trim(),
           );
       if (!mounted) return;
       setState(() => _application = result);
@@ -179,6 +199,43 @@ class _TeacherApplicationScreenState
                   maxLines: 5,
                   decoration: const InputDecoration(
                     labelText: 'Motivación para el admin',
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Redes sociales (opcional)',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _instagramController,
+                  keyboardType: TextInputType.url,
+                  decoration: const InputDecoration(
+                    labelText: 'Instagram',
+                    hintText: 'https://instagram.com/tu_usuario',
+                    prefixIcon: Icon(Icons.camera_alt_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _tiktokController,
+                  keyboardType: TextInputType.url,
+                  decoration: const InputDecoration(
+                    labelText: 'TikTok',
+                    hintText: 'https://tiktok.com/@tu_usuario',
+                    prefixIcon: Icon(Icons.videocam_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _facebookController,
+                  keyboardType: TextInputType.url,
+                  decoration: const InputDecoration(
+                    labelText: 'Facebook',
+                    hintText: 'https://facebook.com/tu_pagina',
+                    prefixIcon: Icon(Icons.facebook),
                   ),
                 ),
                 const SizedBox(height: 18),

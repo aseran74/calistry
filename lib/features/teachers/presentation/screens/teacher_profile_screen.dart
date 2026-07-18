@@ -198,45 +198,97 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
     final bioController = TextEditingController(
       text: _teacher?['bio']?.toString() ?? '',
     );
+    final instagramController = TextEditingController(
+      text: _teacher?['instagram_url']?.toString() ?? '',
+    );
+    final tiktokController = TextEditingController(
+      text: _teacher?['tiktok_url']?.toString() ?? '',
+    );
+    final facebookController = TextEditingController(
+      text: _teacher?['facebook_url']?.toString() ?? '',
+    );
     try {
       final saved = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Editar perfil'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: displayNameController,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre mostrado',
-                    prefixIcon: Icon(Icons.badge_outlined),
+          content: SizedBox(
+            width: 480,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: displayNameController,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre mostrado',
+                      prefixIcon: Icon(Icons.badge_outlined),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: specialtyController,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Especialidad',
-                    hintText: 'Calistenia, fuerza, movilidad…',
-                    prefixIcon: Icon(Icons.fitness_center_outlined),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: specialtyController,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      labelText: 'Especialidad',
+                      hintText: 'Calistenia, fuerza, movilidad…',
+                      prefixIcon: Icon(Icons.fitness_center_outlined),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: bioController,
-                  maxLines: 4,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    labelText: 'Bio',
-                    alignLabelWithHint: true,
-                    hintText: 'Cuéntales a tus alumnos quién eres.',
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: bioController,
+                    maxLines: 4,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      labelText: 'Bio',
+                      alignLabelWithHint: true,
+                      hintText: 'Cuéntales a tus alumnos quién eres.',
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 20),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Redes sociales',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: instagramController,
+                    keyboardType: TextInputType.url,
+                    decoration: const InputDecoration(
+                      labelText: 'Instagram',
+                      hintText: 'https://instagram.com/tu_usuario',
+                      prefixIcon: Icon(Icons.camera_alt_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: tiktokController,
+                    keyboardType: TextInputType.url,
+                    decoration: const InputDecoration(
+                      labelText: 'TikTok',
+                      hintText: 'https://tiktok.com/@tu_usuario',
+                      prefixIcon: Icon(Icons.videocam_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: facebookController,
+                    keyboardType: TextInputType.url,
+                    decoration: const InputDecoration(
+                      labelText: 'Facebook',
+                      hintText: 'https://facebook.com/tu_pagina',
+                      prefixIcon: Icon(Icons.facebook),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -263,6 +315,9 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
             displayName: name,
             specialty: specialtyController.text.trim(),
             bio: bioController.text.trim(),
+            instagramUrl: instagramController.text.trim(),
+            tiktokUrl: tiktokController.text.trim(),
+            facebookUrl: facebookController.text.trim(),
           );
       if (!mounted) return;
       if (updated != null) {
@@ -284,6 +339,9 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
       displayNameController.dispose();
       specialtyController.dispose();
       bioController.dispose();
+      instagramController.dispose();
+      tiktokController.dispose();
+      facebookController.dispose();
     }
   }
 
@@ -428,7 +486,7 @@ class _TeacherProfileScreenState extends ConsumerState<TeacherProfileScreen> {
                         OutlinedButton.icon(
                           onPressed: _editProfile,
                           icon: const Icon(Icons.edit_outlined, size: 18),
-                          label: const Text('Editar nombre, especialidad y bio'),
+                          label: const Text('Editar perfil y redes sociales'),
                         ),
                       ],
                       const SizedBox(height: 16),
