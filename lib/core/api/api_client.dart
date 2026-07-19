@@ -253,13 +253,36 @@ class ApiClient {
     if (muscleGroup != null && muscleGroup.isNotEmpty) {
       params['muscle_groups'] = 'like.*$muscleGroup*';
     }
-    if (search != null && search.isNotEmpty) {
-      params['name'] = 'ilike.*$search*';
-    }
     if (ownerUserId != null && ownerUserId.isNotEmpty) {
       params['owner_user_id'] = 'eq.$ownerUserId';
     }
+    final q = search?.trim() ?? '';
+    if (q.isNotEmpty) {
+      // Nombre del ejercicio O ejercicios de profesores cuyo nombre coincida.
+      final teacherIds = await _teacherUserIdsMatching(q);
+      if (teacherIds.isEmpty) {
+        params['name'] = 'ilike.*$q*';
+      } else {
+        final ids = teacherIds.join(',');
+        params['or'] =
+            '(name.ilike.*$q*,owner_user_id.in.($ids))';
+      }
+    }
     return _databaseGet('exercises', queryParams: params);
+  }
+
+  /// IDs de profesores aprobados cuyo display_name / especialidad / bio coinciden.
+  Future<List<String>> _teacherUserIdsMatching(String search) async {
+    try {
+      final teachers = await getApprovedTeachers(search: search);
+      return teachers
+          .map((t) => t['user_id']?.toString() ?? '')
+          .where((id) => id.isNotEmpty)
+          .toSet()
+          .toList();
+    } catch (_) {
+      return const [];
+    }
   }
 
   Future<Map<String, dynamic>?> submitExerciseProposal({

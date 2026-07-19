@@ -59,8 +59,9 @@ android {
             // 3. USAR LA FIRMA DE RELEASE OFICIAL PARA LA TIENDA
             signingConfig = signingConfigs.getByName("release")
 
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // R8: reduce tamaño, mejora rendimiento (recomendación Play Console)
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

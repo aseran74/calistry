@@ -332,7 +332,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                     TextField(
                       controller: _searchController,
                       decoration: const InputDecoration(
-                        hintText: 'Buscar ejercicios, técnica o categoría',
+                        hintText: 'Buscar por ejercicio o profesor',
                         prefixIcon: Icon(Icons.search),
                       ),
                     ),

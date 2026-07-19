@@ -45,11 +45,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       final info = await PackageInfo.fromPlatform();
       if (!mounted) return;
       setState(() {
-        _appVersionLine = 'Versión ${info.version} · build ${info.buildNumber}';
+        // versionName + versionCode (Play Console)
+        _appVersionLine = 'Versión ${info.version} (${info.buildNumber})';
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() => _appVersionLine = 'Versión 1.6.0');
+      setState(() => _appVersionLine = 'Versión 1.8.1 (11)');
     }
   }
 

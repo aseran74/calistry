@@ -228,7 +228,7 @@ class _SearchHero extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Busca ejercicios y rutinas desde un mismo sitio para entrenar más rápido.',
+            'Busca por nombre de ejercicio, profesor o rutina desde un mismo sitio.',
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
@@ -237,7 +237,7 @@ class _SearchHero extends StatelessWidget {
             focusNode: focusNode,
             autofocus: true,
             decoration: InputDecoration(
-              hintText: 'Buscar ejercicios y rutinas...',
+              hintText: 'Ejercicio, profesor o rutina...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: hasText
                   ? Row(
