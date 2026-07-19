@@ -443,11 +443,22 @@ class _WeeklyCell extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
         decoration: BoxDecoration(
           color: hasSlots
-              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.82)
+              ? (isTodayColumn &&
+                      cellSlots.any(
+                        (s) => completedTodayRoutineIds.contains(s.routineId),
+                      )
+                  ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.9)
+                  : theme.colorScheme.primaryContainer.withValues(alpha: 0.82))
               : null,
           border: hasSlots
               ? Border.all(
-                  color: theme.colorScheme.primary,
+                  color: isTodayColumn &&
+                          cellSlots.any(
+                            (s) =>
+                                completedTodayRoutineIds.contains(s.routineId),
+                          )
+                      ? theme.colorScheme.tertiary
+                      : theme.colorScheme.primary,
                   width: 2,
                 )
               : null,
@@ -462,33 +473,55 @@ class _WeeklyCell extends StatelessWidget {
                       completedTodayRoutineIds.contains(slot.routineId);
                   return Tooltip(
                     message: isDone
-                        ? '${slot.routineName} · Hecha'
+                        ? '${slot.routineName} · Hecha hoy'
                         : '${slot.routineName} · ${slot.timeLabel}',
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (isDone)
-                          Icon(
-                            Icons.check_circle,
-                            size: 14,
-                            color: theme.colorScheme.primary,
-                          ),
-                        if (isDone) const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            slot.routineName,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              decoration: isDone
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                          ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 1),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
                         ),
-                      ],
+                        decoration: isDone
+                            ? BoxDecoration(
+                                color: theme.colorScheme.tertiary
+                                    .withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(6),
+                              )
+                            : null,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (isDone) ...[
+                              Icon(
+                                Icons.check_circle,
+                                size: 14,
+                                color: theme.colorScheme.tertiary,
+                              ),
+                              const SizedBox(width: 3),
+                            ],
+                            Flexible(
+                              child: Text(
+                                isDone ? '✓ ${slot.routineName}' : slot.routineName,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  fontWeight:
+                                      isDone ? FontWeight.w800 : null,
+                                  color: isDone
+                                      ? theme.colorScheme.tertiary
+                                      : null,
+                                  decoration: isDone
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   );
                 },

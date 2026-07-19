@@ -253,19 +253,25 @@ class ApiClient {
     if (muscleGroup != null && muscleGroup.isNotEmpty) {
       params['muscle_groups'] = 'like.*$muscleGroup*';
     }
-    if (ownerUserId != null && ownerUserId.isNotEmpty) {
-      params['owner_user_id'] = 'eq.$ownerUserId';
+    final ownerFilter =
+        ownerUserId != null && ownerUserId.isNotEmpty ? ownerUserId : null;
+    if (ownerFilter != null) {
+      params['owner_user_id'] = 'eq.$ownerFilter';
     }
     final q = search?.trim() ?? '';
     if (q.isNotEmpty) {
-      // Nombre del ejercicio O ejercicios de profesores cuyo nombre coincida.
-      final teacherIds = await _teacherUserIdsMatching(q);
-      if (teacherIds.isEmpty) {
+      if (ownerFilter != null) {
+        // Ya filtramos por profesor: la búsqueda solo aplica al nombre.
         params['name'] = 'ilike.*$q*';
       } else {
-        final ids = teacherIds.join(',');
-        params['or'] =
-            '(name.ilike.*$q*,owner_user_id.in.($ids))';
+        // Nombre del ejercicio O ejercicios de profesores cuyo nombre coincida.
+        final teacherIds = await _teacherUserIdsMatching(q);
+        if (teacherIds.isEmpty) {
+          params['name'] = 'ilike.*$q*';
+        } else {
+          final ids = teacherIds.join(',');
+          params['or'] = '(name.ilike.*$q*,owner_user_id.in.($ids))';
+        }
       }
     }
     return _databaseGet('exercises', queryParams: params);

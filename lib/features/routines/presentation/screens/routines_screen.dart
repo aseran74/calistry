@@ -347,6 +347,20 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                   );
                 }
 
+                final progress =
+                    ref.watch(userProgressListProvider).valueOrNull ?? [];
+                final today = DateTime.now();
+                final todayStart = DateTime(today.year, today.month, today.day);
+                final todayEnd = todayStart.add(const Duration(days: 1));
+                final doneToday = progress
+                    .where((e) {
+                      final at = e.completedAt;
+                      if (at == null) return false;
+                      return !at.isBefore(todayStart) && at.isBefore(todayEnd);
+                    })
+                    .map((e) => e.routineId)
+                    .toSet();
+
                 return ListView.builder(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: EdgeInsets.fromLTRB(
@@ -358,6 +372,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final routine = filtered[index];
+                    final isDoneToday = doneToday.contains(routine.id);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: RoutineCard(
@@ -365,6 +380,7 @@ class _RoutinesScreenState extends ConsumerState<RoutinesScreen> {
                         exerciseCount: 0,
                         estimatedSeconds: 0,
                         firstExerciseImageUrl: null,
+                        isDoneToday: isDoneToday,
                         onTap: () => context.push(
                           StudentShellRoutes.routinePlay(routine.id),
                           extra: routine,

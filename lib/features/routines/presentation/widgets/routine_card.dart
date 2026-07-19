@@ -14,6 +14,7 @@ class RoutineCard extends StatelessWidget {
     this.onMarkDone,
     /// Fijar la rutina en varios días/hora del planning semanal (alumno).
     this.onWeeklySchedule,
+    this.isDoneToday = false,
   });
 
   final Routine routine;
@@ -23,6 +24,7 @@ class RoutineCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onMarkDone;
   final VoidCallback? onWeeklySchedule;
+  final bool isDoneToday;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +35,9 @@ class RoutineCard extends StatelessWidget {
     // es un ListView (eje vertical sin tope) y hay Row(stretch) + Stack(expand).
     return Card(
       clipBehavior: Clip.antiAlias,
+      color: isDoneToday
+          ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.45)
+          : null,
       child: SizedBox(
         height: 132,
         child: Row(
@@ -63,11 +68,15 @@ class RoutineCard extends StatelessWidget {
                     ),
                   if (onMarkDone != null)
                     IconButton(
-                      onPressed: onMarkDone,
-                      tooltip: 'Marcar como hecha',
+                      onPressed: isDoneToday ? null : onMarkDone,
+                      tooltip: isDoneToday ? 'Hecha hoy' : 'Marcar como hecha',
                       icon: Icon(
-                        Icons.check_circle_outline,
-                        color: theme.colorScheme.primary,
+                        isDoneToday
+                            ? Icons.check_circle
+                            : Icons.check_circle_outline,
+                        color: isDoneToday
+                            ? theme.colorScheme.tertiary
+                            : theme.colorScheme.primary,
                       ),
                     ),
                 ],
@@ -161,6 +170,41 @@ class RoutineCard extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
+                        if (isDoneToday)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.tertiary
+                                  .withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: theme.colorScheme.tertiary
+                                    .withValues(alpha: 0.45),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.check_circle,
+                                  size: 12,
+                                  color: theme.colorScheme.tertiary,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'HECHA HOY',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: theme.colorScheme.tertiary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,

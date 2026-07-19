@@ -8,6 +8,23 @@ import 'package:calistenia_app/features/exercises/domain/models/exercise.dart';
 final exercisesSearchQueryProvider = StateProvider<String>((ref) => '');
 final exercisesCategoryProvider = StateProvider<String?>((ref) => null);
 final exercisesDifficultyProvider = StateProvider<String?>((ref) => null);
+final exercisesOwnerUserIdProvider = StateProvider<String?>((ref) => null);
+
+/// Profesores aprobados para el filtro desplegable de ejercicios.
+final approvedTeachersForFilterProvider =
+    FutureProvider<List<({String id, String name})>>((ref) async {
+  final client = ref.watch(apiClientProvider);
+  final rows = await client.getApprovedTeachers();
+  final out = <({String id, String name})>[];
+  for (final row in rows) {
+    final id = row['user_id']?.toString() ?? '';
+    if (id.isEmpty) continue;
+    final name = (row['display_name']?.toString() ?? '').trim();
+    out.add((id: id, name: name.isEmpty ? 'Profesor' : name));
+  }
+  out.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  return out;
+});
 
 class ExercisesNotifier extends StateNotifier<AsyncValue<List<Exercise>>> {
   ExercisesNotifier(this._client) : super(const AsyncValue.loading()) {
@@ -20,6 +37,7 @@ class ExercisesNotifier extends StateNotifier<AsyncValue<List<Exercise>>> {
   final List<Exercise> _all = [];
   String? _lastCategory;
   String? _lastDifficulty;
+  String? _lastOwnerUserId;
   String _lastSearch = '';
   bool _hasMore = true;
   bool _loadingMore = false;
@@ -35,6 +53,7 @@ class ExercisesNotifier extends StateNotifier<AsyncValue<List<Exercise>>> {
       final list = await _client.getExercises(
         category: _lastCategory,
         difficulty: _lastDifficulty,
+        ownerUserId: _lastOwnerUserId,
         search: _lastSearch.isEmpty ? null : _lastSearch,
         limit: _pageSize,
         offset: _offset,
@@ -59,10 +78,14 @@ class ExercisesNotifier extends StateNotifier<AsyncValue<List<Exercise>>> {
     String? category,
     String? difficulty,
     String? search,
+    String? ownerUserId,
   }) async {
     _lastCategory = category;
     _lastDifficulty = difficulty;
-    _lastSearch = search ?? _lastSearch;
+    _lastOwnerUserId = ownerUserId;
+    if (search != null) {
+      _lastSearch = search;
+    }
     await _load(reset: true);
   }
 
@@ -73,6 +96,7 @@ class ExercisesNotifier extends StateNotifier<AsyncValue<List<Exercise>>> {
       final list = await _client.getExercises(
         category: _lastCategory,
         difficulty: _lastDifficulty,
+        ownerUserId: _lastOwnerUserId,
         search: _lastSearch.isEmpty ? null : _lastSearch,
         limit: _pageSize,
         offset: _offset,

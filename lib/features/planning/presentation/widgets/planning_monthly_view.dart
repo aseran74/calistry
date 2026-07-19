@@ -367,19 +367,28 @@ class _DayCell extends StatelessWidget {
                               ),
                               child: Row(
                                 children: [
-                                  if (isDone) ...[
-                                    Icon(
-                                      Icons.check_circle,
-                                      size: 12,
-                                      color: theme.colorScheme.primary,
-                                    ),
-                                    const SizedBox(width: 3),
-                                  ],
+                                  Icon(
+                                    isDone
+                                        ? Icons.check_circle
+                                        : Icons.fitness_center,
+                                    size: 12,
+                                    color: isDone
+                                        ? theme.colorScheme.tertiary
+                                        : theme.colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 3),
                                   Expanded(
                                     child: Text(
-                                      '${slot.timeLabel} ${slot.routineName}',
+                                      isDone
+                                          ? '✓ ${slot.routineName}'
+                                          : '${slot.timeLabel} ${slot.routineName}',
                                       style:
                                           theme.textTheme.labelSmall?.copyWith(
+                                        fontWeight:
+                                            isDone ? FontWeight.w800 : null,
+                                        color: isDone
+                                            ? theme.colorScheme.tertiary
+                                            : null,
                                         decoration: isDone
                                             ? TextDecoration.lineThrough
                                             : null,

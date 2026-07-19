@@ -335,36 +335,50 @@ class HomeScreen extends ConsumerWidget {
                 onTap: () => context.push(StudentShellRoutes.routineCreate),
               );
             }
+            final progress =
+                ref.watch(userProgressListProvider).valueOrNull ?? [];
+            final now = DateTime.now();
+            final todayStart = DateTime(now.year, now.month, now.day);
+            final todayEnd = todayStart.add(const Duration(days: 1));
+            final isDoneToday = progress.any((e) {
+              if (e.routineId != rutinaDelDia.id) return false;
+              final at = e.completedAt;
+              if (at == null) return false;
+              return !at.isBefore(todayStart) && at.isBefore(todayEnd);
+            });
             return _RutinaDelDiaCard(
               routine: rutinaDelDia,
+              isDoneToday: isDoneToday,
               onTap: () => context.push(
                 StudentShellRoutes.routinePlay(rutinaDelDia.id),
                 extra: rutinaDelDia,
               ),
-              onMarkDone: () async {
-                try {
-                  await ref.read(apiClientProvider).saveProgress(
-                        routineId: rutinaDelDia.id,
-                        durationSeconds: null,
-                        notes: null,
-                      );
-                  ref.invalidate(userProgressListProvider);
-                  ref.invalidate(planningSlotsProvider);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Rutina marcada como hecha'),
-                    ),
-                  );
-                } catch (e) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error: $e'),
-                    ),
-                  );
-                }
-              },
+              onMarkDone: isDoneToday
+                  ? null
+                  : () async {
+                      try {
+                        await ref.read(apiClientProvider).saveProgress(
+                              routineId: rutinaDelDia.id,
+                              durationSeconds: null,
+                              notes: null,
+                            );
+                        ref.invalidate(userProgressListProvider);
+                        ref.invalidate(planningSlotsProvider);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Rutina marcada como hecha'),
+                          ),
+                        );
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                          ),
+                        );
+                      }
+                    },
             );
           },
         ),
@@ -887,16 +901,21 @@ class _RutinaDelDiaCard extends StatelessWidget {
     required this.routine,
     required this.onTap,
     this.onMarkDone,
+    this.isDoneToday = false,
   });
 
   final Routine routine;
   final VoidCallback onTap;
   final VoidCallback? onMarkDone;
+  final bool isDoneToday;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
+      color: isDoneToday
+          ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.5)
+          : null,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
@@ -912,15 +931,22 @@ class _RutinaDelDiaCard extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      theme.colorScheme.primary.withValues(alpha: 0.22),
+                      (isDoneToday
+                              ? theme.colorScheme.tertiary
+                              : theme.colorScheme.primary)
+                          .withValues(alpha: 0.22),
                       theme.colorScheme.surfaceContainerHighest,
                     ],
                   ),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Icon(
-                  Icons.playlist_play_rounded,
-                  color: theme.colorScheme.primary,
+                  isDoneToday
+                      ? Icons.check_circle_rounded
+                      : Icons.playlist_play_rounded,
+                  color: isDoneToday
+                      ? theme.colorScheme.tertiary
+                      : theme.colorScheme.primary,
                   size: 30,
                 ),
               ),
@@ -947,14 +973,23 @@ class _RutinaDelDiaCard extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        const _Tag(text: 'Rutina sugerida'),
+                        if (isDoneToday)
+                          const _Tag(text: '✓ Hecha hoy')
+                        else
+                          const _Tag(text: 'Rutina sugerida'),
                         _Tag(text: routine.isPublic ? 'Pública' : 'Privada'),
                       ],
                     ),
                   ],
                 ),
               ),
-              if (onMarkDone != null)
+              if (isDoneToday)
+                Icon(
+                  Icons.check_circle,
+                  color: theme.colorScheme.tertiary,
+                  size: 28,
+                )
+              else if (onMarkDone != null)
                 IconButton(
                   onPressed: onMarkDone,
                   tooltip: 'Marcar como hecha',

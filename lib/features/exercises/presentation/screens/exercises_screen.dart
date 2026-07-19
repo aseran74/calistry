@@ -42,6 +42,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
       ref.read(exercisesProvider.notifier).setFilters(
             category: queryCategory,
             difficulty: ref.read(exercisesDifficultyProvider),
+            ownerUserId: ref.read(exercisesOwnerUserIdProvider),
             search: _searchController.text.trim().isEmpty
                 ? null
                 : _searchController.text.trim(),
@@ -49,18 +50,22 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
     }
   }
 
+  void _applyFilters() {
+    ref.read(exercisesProvider.notifier).setFilters(
+          search: _searchController.text.trim(),
+          category: ref.read(exercisesCategoryProvider),
+          difficulty: ref.read(exercisesDifficultyProvider),
+          ownerUserId: ref.read(exercisesOwnerUserIdProvider),
+        );
+  }
+
   void _onSearchChanged() {
+    setState(() {});
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(_debounceDuration, () {
       ref.read(exercisesSearchQueryProvider.notifier).state =
           _searchController.text.trim();
-      ref.read(exercisesProvider.notifier).setFilters(
-            search: _searchController.text.trim().isEmpty
-                ? null
-                : _searchController.text.trim(),
-            category: ref.read(exercisesCategoryProvider),
-            difficulty: ref.read(exercisesDifficultyProvider),
-          );
+      _applyFilters();
     });
   }
 
@@ -282,6 +287,8 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
     final exercisesState = ref.watch(exercisesProvider);
     final category = ref.watch(exercisesCategoryProvider);
     final difficulty = ref.watch(exercisesDifficultyProvider);
+    final ownerUserId = ref.watch(exercisesOwnerUserIdProvider);
+    final teachersAsync = ref.watch(approvedTeachersForFilterProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -321,6 +328,10 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                       total: exercisesState.valueOrNull?.length ?? 0,
                       category: category,
                       difficulty: difficulty,
+                      teacherName: teachersAsync.valueOrNull
+                          ?.where((t) => t.id == ownerUserId)
+                          .map((t) => t.name)
+                          .firstOrNull,
                     ),
                     if (auth.isAuthenticated && !auth.isAdmin) ...[
                       const SizedBox(height: 14),
@@ -329,68 +340,49 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                       ),
                     ],
                     const SizedBox(height: 18),
-                    TextField(
-                      controller: _searchController,
-                      decoration: const InputDecoration(
-                        hintText: 'Buscar por ejercicio o profesor',
-                        prefixIcon: Icon(Icons.search),
-                      ),
+                    _ExercisesFilterPanel(
+                      searchController: _searchController,
+                      category: category,
+                      difficulty: difficulty,
+                      ownerUserId: ownerUserId,
+                      teachers: teachersAsync.valueOrNull ?? const [],
+                      teachersLoading: teachersAsync.isLoading,
+                      hasActiveFilters: category != null ||
+                          difficulty != null ||
+                          ownerUserId != null ||
+                          _searchController.text.trim().isNotEmpty,
+                      onTeacherChanged: (value) {
+                        ref.read(exercisesOwnerUserIdProvider.notifier).state =
+                            value;
+                        _applyFilters();
+                      },
+                      onCategoryChanged: (value) {
+                        ref.read(exercisesCategoryProvider.notifier).state =
+                            value;
+                        _applyFilters();
+                      },
+                      onDifficultyChanged: (value) {
+                        ref.read(exercisesDifficultyProvider.notifier).state =
+                            value;
+                        _applyFilters();
+                      },
+                      onClear: () {
+                        _searchController.clear();
+                        ref.read(exercisesCategoryProvider.notifier).state =
+                            null;
+                        ref.read(exercisesDifficultyProvider.notifier).state =
+                            null;
+                        ref.read(exercisesOwnerUserIdProvider.notifier).state =
+                            null;
+                        ref.read(exercisesProvider.notifier).setFilters(
+                              category: null,
+                              difficulty: null,
+                              ownerUserId: null,
+                              search: '',
+                            );
+                      },
                     ),
-                    const SizedBox(height: 14),
-                    _FilterSection(
-                      title: 'Categorías',
-                      children: exerciseCategories.map((c) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8, bottom: 8),
-                          child: FilterChip(
-                            label: Text(_labelCategory(c)),
-                            selected: category == c,
-                            onSelected: (_) {
-                              final next = category == c ? null : c;
-                              ref
-                                  .read(exercisesCategoryProvider.notifier)
-                                  .state = next;
-                              ref.read(exercisesProvider.notifier).setFilters(
-                                    category: next,
-                                    difficulty: difficulty,
-                                    search:
-                                        _searchController.text.trim().isEmpty
-                                            ? null
-                                            : _searchController.text.trim(),
-                                  );
-                            },
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 6),
-                    _FilterSection(
-                      title: 'Dificultad',
-                      children: exerciseDifficulties.map((d) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8, bottom: 8),
-                          child: FilterChip(
-                            label: Text(_labelDifficulty(d)),
-                            selected: difficulty == d,
-                            onSelected: (_) {
-                              final next = difficulty == d ? null : d;
-                              ref
-                                  .read(exercisesDifficultyProvider.notifier)
-                                  .state = next;
-                              ref.read(exercisesProvider.notifier).setFilters(
-                                    difficulty: next,
-                                    category: category,
-                                    search:
-                                        _searchController.text.trim().isEmpty
-                                            ? null
-                                            : _searchController.text.trim(),
-                                  );
-                            },
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 18),
                     Row(
                       children: [
                         Text(
@@ -468,7 +460,15 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                             ref
                                 .read(exercisesDifficultyProvider.notifier)
                                 .state = null;
-                            ref.read(exercisesProvider.notifier).setFilters();
+                            ref
+                                .read(exercisesOwnerUserIdProvider.notifier)
+                                .state = null;
+                            ref.read(exercisesProvider.notifier).setFilters(
+                                  category: null,
+                                  difficulty: null,
+                                  ownerUserId: null,
+                                  search: '',
+                                );
                           },
                         ),
                       ),
@@ -517,13 +517,6 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
     );
   }
 
-  String _labelCategory(String c) {
-    return exerciseCategoryLabel(c);
-  }
-
-  String _labelDifficulty(String d) {
-    return exerciseDifficultyLabel(d);
-  }
 }
 
 class _ProposalCtaCard extends StatelessWidget {
@@ -589,21 +582,205 @@ class _ProposalCtaCard extends StatelessWidget {
   }
 }
 
+class _ExercisesFilterPanel extends StatelessWidget {
+  const _ExercisesFilterPanel({
+    required this.searchController,
+    required this.category,
+    required this.difficulty,
+    required this.ownerUserId,
+    required this.teachers,
+    required this.teachersLoading,
+    required this.hasActiveFilters,
+    required this.onTeacherChanged,
+    required this.onCategoryChanged,
+    required this.onDifficultyChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController searchController;
+  final String? category;
+  final String? difficulty;
+  final String? ownerUserId;
+  final List<({String id, String name})> teachers;
+  final bool teachersLoading;
+  final bool hasActiveFilters;
+  final ValueChanged<String?> onTeacherChanged;
+  final ValueChanged<String?> onCategoryChanged;
+  final ValueChanged<String?> onDifficultyChanged;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final teacherValue = ownerUserId != null &&
+            teachers.any((t) => t.id == ownerUserId)
+        ? ownerUserId
+        : null;
+
+    final teacherDropdown = DropdownButtonFormField<String?>(
+      key: ValueKey('teacher-$teacherValue-${teachers.length}'),
+      initialValue: teacherValue,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'Profesor',
+        hintText: teachersLoading ? 'Cargando…' : 'Todos',
+        prefixIcon: const Icon(Icons.school_outlined),
+        filled: true,
+      ),
+      items: [
+        const DropdownMenuItem<String?>(
+          value: null,
+          child: Text('Todos los profesores'),
+        ),
+        ...teachers.map(
+          (t) => DropdownMenuItem<String?>(
+            value: t.id,
+            child: Text(t.name, overflow: TextOverflow.ellipsis),
+          ),
+        ),
+      ],
+      onChanged: teachersLoading ? null : onTeacherChanged,
+    );
+
+    final categoryDropdown = DropdownButtonFormField<String?>(
+      key: ValueKey('category-$category'),
+      initialValue: category,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'Categoría',
+        prefixIcon: Icon(Icons.category_outlined),
+        filled: true,
+      ),
+      items: [
+        const DropdownMenuItem<String?>(
+          value: null,
+          child: Text('Todas las categorías'),
+        ),
+        ...exerciseCategories.map(
+          (c) => DropdownMenuItem<String?>(
+            value: c,
+            child: Text(exerciseCategoryLabel(c)),
+          ),
+        ),
+      ],
+      onChanged: onCategoryChanged,
+    );
+
+    final difficultyDropdown = DropdownButtonFormField<String?>(
+      key: ValueKey('difficulty-$difficulty'),
+      initialValue: difficulty,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'Nivel',
+        prefixIcon: Icon(Icons.signal_cellular_alt),
+        filled: true,
+      ),
+      items: [
+        const DropdownMenuItem<String?>(
+          value: null,
+          child: Text('Todos los niveles'),
+        ),
+        ...exerciseDifficulties.map(
+          (d) => DropdownMenuItem<String?>(
+            value: d,
+            child: Text(exerciseDifficultyLabel(d)),
+          ),
+        ),
+      ],
+      onChanged: onDifficultyChanged,
+    );
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.tune_rounded, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Buscar y filtrar',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (hasActiveFilters)
+                TextButton.icon(
+                  onPressed: onClear,
+                  icon: const Icon(Icons.filter_alt_off_outlined, size: 18),
+                  label: const Text('Limpiar'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Elige profesor, categoría o nivel, o escribe el nombre del ejercicio.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: searchController,
+            decoration: const InputDecoration(
+              hintText: 'Nombre del ejercicio…',
+              prefixIcon: Icon(Icons.search),
+              filled: true,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (wide)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: teacherDropdown),
+                const SizedBox(width: 12),
+                Expanded(child: categoryDropdown),
+                const SizedBox(width: 12),
+                Expanded(child: difficultyDropdown),
+              ],
+            )
+          else ...[
+            teacherDropdown,
+            const SizedBox(height: 10),
+            categoryDropdown,
+            const SizedBox(height: 10),
+            difficultyDropdown,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _ExercisesHero extends StatelessWidget {
   const _ExercisesHero({
     required this.total,
     required this.category,
     required this.difficulty,
+    this.teacherName,
   });
 
   final int total;
   final String? category;
   final String? difficulty;
+  final String? teacherName;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasFilter = category != null || difficulty != null;
+    final hasFilter =
+        category != null || difficulty != null || teacherName != null;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -631,8 +808,8 @@ class _ExercisesHero extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             hasFilter
-                ? 'Filtra la biblioteca y afina el trabajo que quieres hacer hoy.'
-                : 'Explora la biblioteca completa y descubre nuevos movimientos.',
+                ? 'Resultados filtrados por tus criterios.'
+                : 'Usa el panel de filtros para buscar por profesor, categoría o nivel.',
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
@@ -641,40 +818,15 @@ class _ExercisesHero extends StatelessWidget {
             runSpacing: 10,
             children: [
               _HeroBadge(label: '$total disponibles'),
-              if (category != null) _HeroBadge(label: category!),
-              if (difficulty != null) _HeroBadge(label: difficulty!),
+              if (teacherName != null) _HeroBadge(label: teacherName!),
+              if (category != null)
+                _HeroBadge(label: exerciseCategoryLabel(category!)),
+              if (difficulty != null)
+                _HeroBadge(label: exerciseDifficultyLabel(difficulty!)),
             ],
           ),
         ],
       ),
-    );
-  }
-}
-
-class _FilterSection extends StatelessWidget {
-  const _FilterSection({
-    required this.title,
-    required this.children,
-  });
-
-  final String title;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(children: children),
-      ],
     );
   }
 }
